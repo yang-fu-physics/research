@@ -2,26 +2,27 @@ import os
 import math
 from scipy import interpolate
 import numpy as np
-
+import matplotlib.pyplot as plt
 
 def spit(dataT, j):
     a1 = dataT[:j, :]
     a2 = dataT[j:, :]
-    print(a1)
-    print(a2)
     av = (inter(a1) + inter(a2)) / 2
     np.savetxt(str(dataT[0, 0]) + ".dat", av, fmt="%.8e", delimiter=",")
 
 
 def inter(m):
     a = 1
-    if m[0, 3] < 0:
+    if m[0, 1] < 0:
         a = -1
-    fx = interpolate.interp1d(m[:,1], m[:,3], kind="linear", fill_value="extrapolate")
+    fx = interpolate.interp1d(m[:,1], m[:,3], kind="linear",fill_value="extrapolate")#'linear','zero', 'slinear', 'quadratic', 'cubic'
     x = np.linspace(0, a * 140000, 7001)
     intery = np.zeros([x.size, 2])
     intery[:, 0] = a * x
     intery[:, 1] = a * fx(x)
+    plt.plot(m[:,1],m[:,3],intery[:,0],intery[:,1])
+    plt.show()
+    print(intery)
     return intery
 
 def hall(name):
