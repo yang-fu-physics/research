@@ -8,7 +8,7 @@ def spit(dataT, j):
     a1 = dataT[:j, :]
     a2 = dataT[j:, :]
     av = (inter(a1) + inter(a2)) / 2
-    np.savetxt(str(dataT[0, 0]) + ".dat", av, fmt="%.8e", delimiter=",")
+    np.savetxt(str(dataT[0, 0]) + "-hall.dat", av, fmt="%.8e", delimiter=",")
 
 
 def inter(m):
@@ -20,8 +20,8 @@ def inter(m):
     intery = np.zeros([x.size, 2])
     intery[:, 0] = a * x
     intery[:, 1] = a * fx(x)
-    plt.plot(m[:,1],m[:,3],intery[:,0],intery[:,1])
-    plt.show()
+    #plt.plot(m[:,1],m[:,3],intery[:,0],intery[:,1])
+    #plt.show()
     print(intery)
     return intery
 
@@ -72,5 +72,5 @@ def hall(name):
         i=i+1
 
 
-hall('Sheet11.dat')
+hall('HALL.dat')
 
