@@ -31,6 +31,7 @@ def hall(name):
     a = open(name, "r+")
     data = a.readlines()
     rows = len(data)
+    a.close()
     l = 0
     for line in data:
         line = line.strip().split(',')  # strip()默认移除字符串首尾空格或换行符

@@ -44,7 +44,7 @@ def rund(a, c):
 def runc(a):
     """反解界面大小，或对应的倒空间长度"""
     b = math.sqrt(a / (A * pi))
-    # print(a / A)
+    print(a / A)
     print(b / (2 * pi) * 2)
 
 
