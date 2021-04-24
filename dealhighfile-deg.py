@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+"""读取多个文件，并提取相应列数至同一文件"""
 filelist=["-newRH-1.8k-r-90-10mA-ch3sr554.dat","RH-3k-90-10mA-ch3sr554.dat","RH-4k-90deg-10mA-ch3sr554.dat","RH-5k-90-10mA-ch3sr554.dat","RH-6k-90deg-10mA-ch3sr554.dat","RH-7k-90-10mA-ch3sr554.dat","RH-8k-90deg-10mA-ch3sr554.dat","RH-9k-90-10mA-ch3sr554.dat","RH-10k-90deg-10mA-ch3sr554.dat","RH-11k-90-10mA-ch3sr554.dat","RH-15k-90-10mA-ch3sr554.dat","RH-20k-90-10mA-ch3sr554.dat","RH-25k-90-10mA-ch3sr554.dat","RH-30k-90-10mA-ch3sr554.dat","RH-35k-90-10mA-ch3sr554.dat"]
 header="Filed,1.8K,Filed,3K,Filed,4K,Filed,5K,Filed,6K,Filed,7K,Filed,8K,Filed,9K,Filed,10K,Filed,11K,Filed,15K,Filed,20K,Filed,25K,Filed,30K,Filed,35K"
 #filelist = ["RH-1.8k-r-90-10mA-ch3sr554.dat","RH-1.8K-85deg-10ma-ch3sr554.dat","RH-1.8K-80deg-10ma-ch3sr554.dat","RH-1.8K-75deg-10ma-ch3sr554.dat","RH-1.8K-70deg-10ma-ch3sr554.dat","RH-1.8K-60deg-10ma-ch3sr554.dat","RH-1.8K-50deg-10ma-ch3sr554.dat","RH-1.8K-40deg-10ma-ch3sr554.dat","RH-1.8K-30deg-10ma-ch3sr554.dat","RH-1.8K-20deg-10ma-ch3sr554.dat","RH-1.8K-10deg-10ma-ch3sr554.dat"]

@@ -3,7 +3,7 @@ import math
 from scipy import interpolate
 import numpy as np
 import matplotlib.pyplot as plt
-
+"""早期的处理电阻的程序，已经不需要了"""
 
 def spit(dataT, j):
     a1 = dataT[:j, :]

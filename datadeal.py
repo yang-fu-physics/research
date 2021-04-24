@@ -4,7 +4,6 @@ from scipy import interpolate
 import numpy as np
 import matplotlib.pyplot as plt
 
-
 """
 使用origin删除掉废弃数据，最后留下四列（温度，磁场，电阻，霍尔）或者三列（温度，磁场，电阻）。保证每个温度，磁场都会从负值正值，或者正值到负值。
 使用origin导出ASCII，使用“，”作为分隔符。不要抬头，即输出文件只有数据。(如图)
@@ -21,14 +20,17 @@ import matplotlib.pyplot as plt
 文件夹中的Sheet1.dat为示例文件。
 """
 workdir = os.getcwd()
+
+
 def halltest(name):
     a = open(name, "r+")
     data = a.readlines()
-    line = data[0].strip().split(',') # strip()默认移除字符串首尾空格或换行符
-    if len(line)>3:
+    line = data[0].strip().split(',')  # strip()默认移除字符串首尾空格或换行符
+    if len(line) > 3:
         return True
     else:
         return False
+
 
 def plot(headline, data, rhoorhall):
     j = 0
@@ -90,7 +92,7 @@ def inter(m, range, lie, interval):
         a = -1
     fx = interpolate.interp1d(m[:, 1], m[:, 2], kind="linear",
                               fill_value="extrapolate")  # 'linear','zero', 'slinear', 'quadratic', 'cubic'
-    internumber = int(range * 10000 / interval+ 1)
+    internumber = int(range * 10000 / interval + 1)
     x = np.linspace(0, a * range * 10000, internumber)
     intery = np.zeros([x.size, 2])
     intery[:, 0] = a * x
@@ -107,12 +109,12 @@ def inter(m, range, lie, interval):
 def spit(dataT, j, range, lie, interval):
     a1 = dataT[:j, :]
     a2 = dataT[j:, :]
-    av = (inter(a1, range,lie,interval) + inter(a2, range, lie, interval)) / 2
+    av = (inter(a1, range, lie, interval) + inter(a2, range, lie, interval)) / 2
     return av
 
 
-def dealdata(name, range, lie, interval,plot):
-    dataall = np.zeros([int(range*10000/interval+1), 40])
+def dealdata(name, range, lie, interval, plot):
+    dataall = np.zeros([int(range * 10000 / interval + 1), 40])
     plt.subplot(plot)
     a = open(name, "r+")
     data = a.readlines()
@@ -151,7 +153,7 @@ def dealdata(name, range, lie, interval,plot):
             dataT = data2[Tchange[i - 1]:Tchange[i], :]  # dataT为每个温度的分离
             j = Fchange[i] - Tchange[i]
             dataspit = spit(dataT, j, range, lie, interval)
-            plt.plot(dataT[:, 1], dataT[:, 2], label="%.1f"% data2[Tchange[i - 1], 0] + "K")
+            plt.plot(dataT[:, 1], dataT[:, 2], label="%.1f" % data2[Tchange[i - 1], 0] + "K")
             if lie == 3:
                 plt.ylabel("Ryx(ohm)")
             else:
@@ -160,20 +162,20 @@ def dealdata(name, range, lie, interval,plot):
             dataall[:, 0] = dataspit[:, 0]
             dataall[:, i + 1] = dataspit[:, 1]
         else:  # 第一组则取0：。
-            if Tchange==[]:
-                dataT=data2[:,:]
+            if Tchange == []:
+                dataT = data2[:, :]
             else:
                 dataT = data2[:Tchange[i], :]
             dataspit = spit(dataT, Fchange[0], range, lie, interval)
             dataall[:, 0] = dataspit[:, 0]
             dataall[:, i + 1] = dataspit[:, 1]
-            plt.plot(dataT[:, 1], dataT[:, 2], label="%.1f"%data2[0, 0] + "K")
+            plt.plot(dataT[:, 1], dataT[:, 2], label="%.1f" % data2[0, 0] + "K")
             if lie == 3:
                 plt.ylabel("Ryx(ohm)")
-            else :
+            else:
                 plt.ylabel("R(ohm)")
             plt.xlabel("Filed(T)")
-            if Tchange==[]:
+            if Tchange == []:
                 break
         if i == len(Tchange) - 1:  # 如果是最后一个点，则额外输出一个至最后的数组。并跳出循环
             dataT = data2[Tchange[i]:, :]
@@ -205,24 +207,23 @@ else:
         range = 14
     else:
         range = float(range)
-    print("插值范围为0-%.0d"%range)
+    print("插值范围为0-%.0d" % range)
     interval = input("输入内插间隔，回车则默认20 Oe\n")
     if interval == "":
         interval = 20
     else:
         interval = float(interval)
-    print("内插间隔为%.0d"%interval)
+    print("内插间隔为%.0d" % interval)
     abc = input("输入长宽高，逗号隔开，单位为cm，回车则皆为1，即输出为电阻\n")
     if abc == "":
         abc = "1,1,1"
-    print("长宽高分别为"+abc)
+    print("长宽高分别为" + abc)
     input("确认参数")
 
-
-    #R处理
+    # R处理
     if halltest(file[0]):
         plt.figure(figsize=(16, 9))
-        [dataR, headline] = dealdata(file[0], range, 2, interval,221)
+        [dataR, headline] = dealdata(file[0], range, 2, interval, 221)
     else:
         plt.figure(figsize=(8, 9))
         [dataR, headline] = dealdata(file[0], range, 2, interval, 211)
@@ -232,7 +233,7 @@ else:
     headlinestr = "Filed(T)"
     for i in headline:
         if abc.replace("，", ",") == "1,1,1":
-            headlinestr = headlinestr + "," + "%.1f"%i + "K(ohm)"
+            headlinestr = headlinestr + "," + "%.1f" % i + "K(ohm)"
         else:
             headlinestr = headlinestr + "," + "%.1f" % i + "K(ohm cm)"
     addheadline(headlinestr, "dealed-R.dat", "dealed-R-" + abc + ".dat")
@@ -240,13 +241,13 @@ else:
         plt.subplot(223)
     else:
         plt.subplot(212)
-    if abc.replace("，", ",")=="1,1,1":
+    if abc.replace("，", ",") == "1,1,1":
         plot(headline, dataR, "R(ohm)")
     else:
         plot(headline, dataR, "rho(ohm cm)")
-    #hall处理
+    # hall处理
     if halltest(file[0]):
-        [datahall, headline] = dealdata(file[0], range, 3, interval,222)
+        [datahall, headline] = dealdata(file[0], range, 3, interval, 222)
         datahall = datahall.T[~(datahall == 0).all(0)].T  # 去除0列
         datahall = Ryxtorhoyx(datahall, abc)
         np.savetxt("dealed-hall.dat", datahall, fmt="%.8e", delimiter=",")
@@ -256,7 +257,6 @@ else:
             plot(headline, datahall, "Ryx(ohm)")
         else:
             plot(headline, datahall, "rhoyx(ohm cm)")
-
 
     plt.tight_layout()
     plt.show()

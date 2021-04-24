@@ -10,13 +10,13 @@ print(h / (2 * pi * 2 * pi * e))
 
 
 def run(a, b):
-    """k坐标乘过2pi"""
+    """k坐标乘过2pi计算频率大小"""
     r = (a - b) / 2
     print(r * r * pi * A)
 
 
 def runa(a, b):
-    """k坐标未乘2pi"""
+    """k坐标未乘2pi计算频率大小"""
     a = a * 2 * pi
     # print(a)
     b = b * 2 * pi
@@ -26,7 +26,7 @@ def runa(a, b):
 
 
 def runb(a, b, c):
-    """k坐标未乘2pi,椭圆"""
+    """k坐标未乘2pi,椭圆计算频率大小"""
     a = a * 2 * pi
     # print(a)
     b = b * 2 * pi
@@ -36,7 +36,7 @@ def runb(a, b, c):
 
 
 def rund(a, c):
-    """k点未乘2pi，圆形，c-a为半径"""
+    """k点未乘2pi，圆形，c-a为半径计算频率大小"""
     r = (c - a) * 2 * pi
     print(r * r * pi * A)
 
@@ -46,6 +46,27 @@ def runc(a):
     b = math.sqrt(a / (A * pi))
     print(a / A)
     print(b / (2 * pi) * 2)
+
+
+def area(a):
+    a = 1 / (a * math.sqrt(3) / 2)  # 倒空间轴长
+    """六方的面积，a为是实空间轴长"""
+    a = a * 2 * pi
+    # print(a)
+    s = a ** 2 * math.sqrt(3) / 2
+    # print(V)
+    return s
+
+
+def calpre(a):
+    """计算面积占比"""
+    return a / area(5.50552)
+
+
+def vf(Af, m):
+    """计算费米速度"""
+    vf = h / (2 * pi) * math.sqrt(Af / pi) * (10 ** 10) / (me * m)
+    return vf
 
 
 runa(0.18821, 0.19719)
@@ -83,19 +104,6 @@ print(-0.076)
 runb(0.43928, 0.45418, 0.445)
 runa(0.20059, 0.20447)
 
-
-def area(a):
-    a=1/(a*math.sqrt(3)/2)#倒空间轴长
-    """六方的面积，a为轴长"""
-    a = a * 2 * pi
-    # print(a)
-    s = a ** 2 * math.sqrt(3) / 2
-    # print(V)
-    return s
-
-def calpre(a):
-    return a/area(5.50552)
-
 print("area")
 print(0.00258 / area(5.50552))
 print(0.00697 / area(5.50552))
@@ -104,13 +112,6 @@ print(0.07503 / area(5.50552))
 print(calpre(0.00258))
 area(1)
 print(100 ** 2)
-
-
-def vf(Af, m):
-    """费米速度"""
-    vf = h / (2 * pi) * math.sqrt(Af / pi) * (10 ** 10) / (me * m)
-    return vf
-
 
 print(vf(0.00258, 0.13003), vf(0.00697, 0.12829), vf(0.06940, 0.54010), vf(0.07503, 0.60574))
 rund(0.02795, 0)
@@ -128,6 +129,5 @@ runb(0.13593, 0.18263, 0.16541)
 runa(0.09457, 0.104)
 
 print((0.45 / 0.51 * 0.85440055) ** 2 * pi * A)
-import math
 
 print(math.sqrt(0.09611757 ** 2 + 0.05549351 ** 2))
