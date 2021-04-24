@@ -4,7 +4,7 @@ import numpy as np
 
 def rewrite(k, m):
     newline = []
-    config = open("config.in", "r+")
+    config = open("../config.in", "r+")
     i = 0
     while 1:
         line = config.readline()
@@ -17,7 +17,7 @@ def rewrite(k, m):
         newline.append(line)
         i = i + 1
     config.close()
-    file = open("config.in", "w")
+    file = open("../config.in", "w")
     for i in newline:
         file.write(i)
     file.close()
