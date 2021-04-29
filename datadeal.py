@@ -102,7 +102,7 @@ def inter(m, range, lie, interval):
     a = 1
     if m[0, 1] < 0:
         a = -1
-    fx = interpolate.interp1d(m[:, 1], m[:, 2], kind="linear",
+    fx = interpolate.interp1d(m[:, 1]/10000, m[:, 2], kind="linear",
                               fill_value="extrapolate")  # 'linear','zero', 'slinear', 'quadratic', 'cubic'
     internumber = int(range * 10000 / interval + 1)
     x = np.linspace(0, a * range, internumber)
