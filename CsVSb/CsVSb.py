@@ -1,5 +1,7 @@
 import math
 
+import numpy as np
+
 pi = 3.141592654
 A = 10475.764126557
 h = 6.62607004 * 10 ** -34
@@ -7,6 +9,16 @@ e = 1.60217733 * 10 ** -19
 me = 9.10938356 * 10 ** -30
 
 print(h / (2 * pi * 2 * pi * e))
+def caltan(r,num):
+    r=r*2*pi*2
+    print(r)
+    c=1/9.315*2*pi
+    tan = np.zeros(num)
+    num=np.linspace(1,num,num)
+    for i in num:
+        nc=i*c
+        tan[int(i-1)]=math.atan(nc/r)/pi*180
+    return tan
 
 
 def run(a, b):
@@ -131,3 +143,5 @@ runa(0.09457, 0.104)
 print((0.45 / 0.51 * 0.85440055) ** 2 * pi * A)
 
 print(math.sqrt(0.09611757 ** 2 + 0.05549351 ** 2))
+print(caltan(0.0286,4))
+print(caltan(0.37928-0.34012,4))
