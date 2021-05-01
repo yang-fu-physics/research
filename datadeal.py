@@ -41,6 +41,38 @@ def filetonumpy(file):
             data[row-1, 1] = line[1]
     return data
 
+def fit(Rfile,hallfile,temp):
+    datahall=filetonumpy(hallfile)
+    dataR=filetonumpy(Rfile)
+    dataR[:,0]=-1*dataR[:,0]
+    data=np.vstack((dataR[::-1, :],datahall))
+    #data = np.vstack((datahall,dataR[::-1, :]))
+    half = np.shape(dataR)[0]
+    plt.figure(figsize=(16, 9))
+    plt.subplot(121)
+    plt.plot(-1*dataR[:, 0], dataR[:, 1], "rx",label=temp+"K")
+    plt.subplot(122)
+    plt.plot(datahall[:, 0], datahall[:, 1], "rx", label=temp + "K")
+    try:
+        p_est,err_est=curve_fit(function, data[:,0], data[:,1])
+    except RuntimeError:
+        p_est = np.array([0, 0, 0, 0])
+        print(temp+"K拟合失败")
+    else:
+        plt.subplot(121)
+        plt.plot(-1 * data[:half-1, 0], function(data[:half-1, 0], *p_est), "k--",label=temp+"K-fit")
+        plt.legend()
+        plt.subplot(122)
+        plt.plot(data[half + 1:, 0], function(data[half + 1:, 0], *p_est), "k--",label=temp+"K-fit")
+        plt.legend()
+        with open("fit.dat", "a") as fitfile:
+            fitstr = temp
+            for i in p_est:
+                fitstr = fitstr + "," + "%e" % i
+            fitfile.write(fitstr + "\n")
+    plt.show()
+    return p_est
+
 def fitonefig(Rfile, hallfile, temp):
     datahall=filetonumpy(hallfile)
     dataR=filetonumpy(Rfile)
@@ -73,7 +105,7 @@ def fitonefig(Rfile, hallfile, temp):
 
 def function(x, ne, nh, miue, miuh):
     """a function of x with four parameters"""
-    result = 0.5*(1-np.sign(x-0.00001))*100/e*((ne*miue+nh*miuh)+(nh*miue+ne*miuh)*miuh*miue*x**2)/((ne*miue+nh*miuh)**2+(nh-ne)**2*(miue*miuh)**2*x**2)+0.5*(1+np.sign(x-0.00001))*100*x/e*((nh*miuh**2-ne*miue**2)+(nh-ne)*(miue*miuh)**2*x**2)/((nh*miuh+ne*miue)**2+(nh-ne)**2*(miue*miuh)**2*x**2)
+    result = 0.5*(1-np.sign(x))*100/e*((ne*miue+nh*miuh)+(nh*miue+ne*miuh)*miuh*miue*x**2)/((ne*miue+nh*miuh)**2+(nh-ne)**2*(miue*miuh)**2*x**2)+0.5*(1+np.sign(x))*100*x/e*((nh*miuh**2-ne*miue**2)+(nh-ne)*(miue*miuh)**2*x**2)/((nh*miuh+ne*miue)**2+(nh-ne)**2*(miue*miuh)**2*x**2)
     return result
 
 
@@ -350,7 +382,8 @@ else:
     abc = abc.replace("，", ",")
     deal(file[0], range, interval, abc)
     """
-if input("是否进行拟合（y/n）")=="y":
+fitornot=input("是否进行拟合（y/n），回车默认拟合")
+if fitornot=="y" or fitornot=="":
     fitfile=open("fit.dat","w+")
     fitfile.write("Temp(K),ne,nh,miue,miuh\n")
     fitfile.close()
@@ -359,15 +392,19 @@ if input("是否进行拟合（y/n）")=="y":
     num=0
     arg=np.zeros([nums,5])
     plt.figure(figsize=(16, 9))
+    oneormore=input("一个温度一个拟合图/所有温度合到一个图（y/n),回车默认为y")
     while True:
         line = fitfiles[num].strip().split('K')
         line=line[0].strip().split("-")
-        arg[num, 1:] = fitonefig(fitfiles[num + nums], fitfiles[num], line[1])
+        if oneormore=="y" or oneormore=="":
+            arg[num, 1:] = fit(fitfiles[num + nums], fitfiles[num], line[1])
+        else:
+            arg[num, 1:] = fitonefig(fitfiles[num + nums], fitfiles[num], line[1])
+
         arg[num,0]=line[1]
         num=num+1
         if num==nums:
             break
     plt.tight_layout()
     plt.show()
-
 input("by fuyang ヽ(°∀°)ﾉ  \n 按任意键结束")
