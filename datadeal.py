@@ -1,9 +1,17 @@
 import os
 import math
+
+import numpy
 from scipy import interpolate
 import numpy as np
 import matplotlib.pyplot as plt
-
+from scipy.optimize import leastsq
+from scipy.optimize import curve_fit
+import math
+pi = 3.141592654
+h = 6.62607004 * 10 ** -34
+e = 1.60217733 * 10 ** -19
+me = 9.10938356 * 10 ** -30
 """
 使用origin删除掉废弃数据，最后留下四列（温度，磁场，电阻，霍尔）或者三列（温度，磁场，电阻）。保证每个温度，磁场都会从负值正值，或者正值到负值。
 使用origin导出ASCII，使用“，”作为分隔符。不要抬头，即输出文件只有数据。(如图)
@@ -20,28 +28,115 @@ import matplotlib.pyplot as plt
 文件夹中的Sheet1.dat为示例文件。
 """
 workdir = os.getcwd()
+def filetonumpy(file):
+    with open(file) as filedata:
+        datastr = filedata.readlines()
+    rows=len(datastr)-1
+    data=numpy.zeros([rows,2])
+    for line in datastr:
+        row=datastr.index(line)
+        line = line.strip().split(',')
+        if line[0]!="Field(T)":
+            data[row-1, 0] = line[0]
+            data[row-1, 1] = line[1]
+    return data
 
-def savesinglefile(headlines,data,type,abc):
-    headlines=headlines.strip().split(',')
+def fit(Rfile,hallfile,temp):
+    datahall=filetonumpy(hallfile)
+    dataR=filetonumpy(Rfile)
+    dataR[:,0]=-1*dataR[:,0]
+    data=np.vstack((dataR[::-1, :],datahall))
+    #data = np.vstack((datahall,dataR[::-1, :]))
+    p_est=np.array([0,0,0,0])
+    plt.plot(data[:, 0], data[:, 1], "rx",label=temp+"K")
+    try:
+        p_est,err_est=curve_fit(function, data[:,0], data[:,1])
+    except RuntimeError:
+        print(temp+"K拟合失败")
+    else:
+        plt.plot(data[:,0], function(data[:,0], *p_est), "k--",label=temp+"K-fit")
+        with open("fit.dat", "a") as fitfile:
+            fitstr = temp
+            for i in p_est:
+                fitstr = fitstr + "," + "%e" % i
+            fitfile.write(fitstr + "\n")
+    plt.legend()
+    plt.show()
+
+
+def function(x, ne, nh, miue, miuh):
+    """a function of x with four parameters"""
+    result = 0.5*(1-np.sign(x-0.00001))*100/e*((ne*miue+nh*miuh)+(nh*miue+ne*miuh)*miuh*miue*x**2)/((ne*miue+nh*miuh)**2+(nh-ne)**2*(miue*miuh)**2*x**2)+0.5*(1+np.sign(x-0.00001))*100*x/e*((nh*miuh**2-ne*miue**2)+(nh-ne)*(miue*miuh)**2*x**2)/((nh*miuh+ne*miue)**2+(nh-ne)**2*(miue*miuh)**2*x**2)
+    return result
+
+
+def deal(file, range, interval, abc):
+    if halltest(file):
+        plt.figure(figsize=(16, 9))
+        [dataR, headline] = dealdata(file, range, 2, interval, 221)
+    else:
+        plt.figure(figsize=(8, 9))
+        [dataR, headline] = dealdata(file, range, 2, interval, 211)
+    dataR = dataR.T[~(dataR == 0).all(0)].T  # 去除0列
+    dataR = Rtorho(dataR, abc)
+    np.savetxt("dealed-R.dat", dataR, fmt="%.8e", delimiter=",")
+    headlinestr = "Field(T)"
+    for i in headline:
+        if abc == "1,1,1":
+            headlinestr = headlinestr + "," + "%.1f" % i + "K(ohm)"
+        else:
+            headlinestr = headlinestr + "," + "%.1f" % i + "K(ohm cm)"
+    addheadline(headlinestr, "dealed-R.dat", "dealed-R-" + abc + ".dat")
+    savesinglefile(headlinestr, dataR, "R", abc)
+    if halltest(file):
+        plt.subplot(223)
+    else:
+        plt.subplot(212)
+    if abc == "1,1,1":
+        plot(headline, dataR, "R(ohm)")
+    else:
+        plot(headline, dataR, "rho(ohm cm)")
+    # hall处理
+    if halltest(file):
+        [datahall, headline] = dealdata(file, range, 3, interval, 222)
+        datahall = datahall.T[~(datahall == 0).all(0)].T  # 去除0列
+        datahall = Ryxtorhoyx(datahall, abc)
+        np.savetxt("dealed-hall.dat", datahall, fmt="%.8e", delimiter=",")
+        addheadline(headlinestr, "dealed-hall.dat", "dealed-hall-" + abc + ".dat")
+        plt.subplot(224)
+        if abc == "1,1,1":
+            plot(headline, datahall, "Ryx(ohm)")
+        else:
+            plot(headline, datahall, "rhoyx(ohm cm)")
+        savesinglefile(headlinestr, datahall, "hall", abc)
+    plt.tight_layout()
+    plt.show()
+
+
+def savesinglefile(headlines, data, type, abc):
+    headlines = headlines.strip().split(',')
     for i in headlines:
-        #print(i)
-        if i!="Field(T)":
-            name=i.strip().split('(')
-            np.savetxt("tmp.dat" ,data[:,[0,headlines.index(i)]], fmt="%.8e", delimiter=",")
-            if abc=="1,1,1":
-                headline="Field(T),Rxx(ohm)"
+        # print(i)
+        if i != "Field(T)":
+            name = i.strip().split('(')
+            np.savetxt("tmp.dat", data[:, [0, headlines.index(i)]], fmt="%.8e", delimiter=",")
+            if abc == "1,1,1":
+                headline = "Field(T),Rxx(ohm)"
             else:
-                headline=["Field(T),rhoxx(ohm cm)"]
-            addheadline(headline,"tmp.dat",type+"-"+name[0]+".dat")
+                headline = ["Field(T),rhoxx(ohm cm)"]
+            addheadline(headline, "tmp.dat", type + "-" + name[0] + ".dat")
+
 
 def halltest(name):
     a = open(name, "r+")
     data = a.readlines()
+    a.close()
     line = data[0].strip().split(',')  # strip()默认移除字符串首尾空格或换行符
     if len(line) > 3:
         return True
     else:
         return False
+
 
 
 def plot(headline, data, rhoorhall):
@@ -60,7 +155,7 @@ def addheadline(headline, oldfile, newfile):
         fp.seek(0)  # 移动游标
         fpw = open(newfile, "w+")
         fpw.write(headline + "\n" + tmp_data)
-        fpw.close
+        fpw.close()
     os.remove(oldfile)
 
 
@@ -102,7 +197,7 @@ def inter(m, range, lie, interval):
     a = 1
     if m[0, 1] < 0:
         a = -1
-    fx = interpolate.interp1d(m[:, 1]/10000, m[:, 2], kind="linear",
+    fx = interpolate.interp1d(m[:, 1] / 10000, m[:, 2], kind="linear",
                               fill_value="extrapolate")  # 'linear','zero', 'slinear', 'quadratic', 'cubic'
     internumber = int(range * 10000 / interval + 1)
     x = np.linspace(0, a * range, internumber)
@@ -119,19 +214,19 @@ def inter(m, range, lie, interval):
 
 
 def spit(dataT, range, lie, interval):
-    row=0
+    row = 0
     while True:
-        if row>0:
+        if row > 0:
             dataF = dataT[row, 1] * dataT[row - 1, 1]
             if dataF < 0:  # 判断磁场转变点，正负转换
-                Fchange=row
+                Fchange = row
                 break
-        row=row+1
-    j=Fchange
+        row = row + 1
+    j = Fchange
 
     a1 = dataT[:j, :]
     a2 = dataT[j:, :]
-    #print(a1,a2)
+    # print(a1,a2)
     av = (inter(a1, range, lie, interval) + inter(a2, range, lie, interval)) / 2
     return av
 
@@ -141,6 +236,7 @@ def dealdata(name, range, lie, interval, plot):
     plt.subplot(plot)
     a = open(name, "r+")
     data = a.readlines()
+    a.close()
     rows = len(data)  # 数据总行
     l = 0
     for line in data:
@@ -148,7 +244,7 @@ def dealdata(name, range, lie, interval, plot):
         if line[lie] == "--":
             l = l + 1
     rows = rows - l  # 确认非空数据行数
-    #print(rows)
+    # print(rows)
     data2 = np.zeros((rows, 3))  # 创建数据储存矩阵
     row = 0  # 数据处理的行数
     Tchange = []  # 温度变化点
@@ -165,7 +261,7 @@ def dealdata(name, range, lie, interval, plot):
             if abs(data2[row, 0] - data2[row - 1, 0]) > 0.3:  # 判读温度转变点
                 Tchange.append(row)
         row += 1
-    #print(Tchange)
+    # print(Tchange)
     """a=0
     for i in Tchange:
         print(i-a)
@@ -222,6 +318,7 @@ def dealdata(name, range, lie, interval, plot):
 
 
 file = [entry.path for entry in os.scandir(workdir) if entry.name.endswith(".dat")]
+"""
 if len(file) > 1:
     print("dat文件过多")
 else:
@@ -231,7 +328,7 @@ else:
         range = 14
     else:
         range = float(range)
-    print("插值范围为0-%.0d" % range)
+    print("插值范围为0-%.1f" % range)
     interval = input("输入内插间隔，回车则默认20 Oe\n")
     if interval == "":
         interval = 20
@@ -243,46 +340,25 @@ else:
         abc = "1,1,1"
     print("长宽高分别为" + abc)
     input("确认参数")
-    abc=abc.replace("，", ",")
-    # R处理
-    if halltest(file[0]):
-        plt.figure(figsize=(16, 9))
-        [dataR, headline] = dealdata(file[0], range, 2, interval, 221)
-    else:
-        plt.figure(figsize=(8, 9))
-        [dataR, headline] = dealdata(file[0], range, 2, interval, 211)
-    dataR = dataR.T[~(dataR == 0).all(0)].T  # 去除0列
-    dataR = Rtorho(dataR, abc)
-    np.savetxt("dealed-R.dat", dataR, fmt="%.8e", delimiter=",")
-    headlinestr = "Field(T)"
-    for i in headline:
-        if abc == "1,1,1":
-            headlinestr = headlinestr + "," + "%.1f" % i + "K(ohm)"
-        else:
-            headlinestr = headlinestr + "," + "%.1f" % i + "K(ohm cm)"
-    addheadline(headlinestr, "dealed-R.dat", "dealed-R-" + abc + ".dat")
-    savesinglefile(headlinestr,dataR,"R",abc)
-    if halltest(file[0]):
-        plt.subplot(223)
-    else:
-        plt.subplot(212)
-    if abc == "1,1,1":
-        plot(headline, dataR, "R(ohm)")
-    else:
-        plot(headline, dataR, "rho(ohm cm)")
-    # hall处理
-    if halltest(file[0]):
-        [datahall, headline] = dealdata(file[0], range, 3, interval, 222)
-        datahall = datahall.T[~(datahall == 0).all(0)].T  # 去除0列
-        datahall = Ryxtorhoyx(datahall, abc)
-        np.savetxt("dealed-hall.dat", datahall, fmt="%.8e", delimiter=",")
-        addheadline(headlinestr, "dealed-hall.dat", "dealed-hall-" + abc + ".dat")
-        plt.subplot(224)
-        if abc == "1,1,1":
-            plot(headline, datahall, "Ryx(ohm)")
-        else:
-            plot(headline, datahall, "rhoyx(ohm cm)")
-    savesinglefile(headlinestr, datahall, "hall", abc)
-    plt.tight_layout()
+    abc = abc.replace("，", ",")
+    deal(file[0], range, interval, abc)
+    """
+if input("是否进行拟合（y/n）")=="y":
+    fitfile=open("fit.dat","w+")
+    fitfile.write("Temp(K),ne,nh,miue,miuh\n")
+    fitfile.close()
+    fitfiles=[entry.path for entry in os.scandir(workdir) if entry.name.endswith("K.dat")]
+    nums=int(len(fitfiles) / 2)
+    num=0
+    arg=np.zeros([nums,5])
+    while True:
+        line = fitfiles[num].strip().split('K')
+        line=line[0].strip().split("-")
+        arg[num, 1:] = fit(fitfiles[num + nums], fitfiles[num], line[1])
+        arg[num,0]=line[1]
+        num=num+1
+        if num==nums:
+            break
     plt.show()
+
 input("by fuyang ヽ(°∀°)ﾉ  \n 按任意键结束")
