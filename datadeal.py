@@ -41,28 +41,35 @@ def filetonumpy(file):
             data[row-1, 1] = line[1]
     return data
 
-def fit(Rfile,hallfile,temp):
+def fitonefig(Rfile, hallfile, temp):
     datahall=filetonumpy(hallfile)
     dataR=filetonumpy(Rfile)
     dataR[:,0]=-1*dataR[:,0]
     data=np.vstack((dataR[::-1, :],datahall))
     #data = np.vstack((datahall,dataR[::-1, :]))
-    p_est=np.array([0,0,0,0])
-    plt.plot(data[:, 0], data[:, 1], "rx",label=temp+"K")
+    half=np.shape(dataR)[0]
+    plt.subplot(121)
+    plt.plot(-1*dataR[:, 0], dataR[:, 1], "x",label=temp+"K")
+    plt.legend()
+    plt.subplot(122)
+    plt.plot(datahall[:, 0], datahall[:, 1], "x", label=temp + "K")
+    plt.legend()
     try:
         p_est,err_est=curve_fit(function, data[:,0], data[:,1])
     except RuntimeError:
+        p_est=np.array([0,0,0,0])
         print(temp+"K拟合失败")
     else:
-        plt.plot(data[:,0], function(data[:,0], *p_est), "k--",label=temp+"K-fit")
+        plt.subplot(121)
+        plt.plot(-1*data[:half,0], function(data[:half,0], *p_est), "r--")
+        plt.subplot(122)
+        plt.plot(data[half+1:, 0], function(data[half+1:, 0], *p_est), "r--")
         with open("fit.dat", "a") as fitfile:
             fitstr = temp
             for i in p_est:
                 fitstr = fitstr + "," + "%e" % i
             fitfile.write(fitstr + "\n")
-    plt.legend()
-    plt.show()
-
+    return p_est
 
 def function(x, ne, nh, miue, miuh):
     """a function of x with four parameters"""
@@ -351,14 +358,16 @@ if input("是否进行拟合（y/n）")=="y":
     nums=int(len(fitfiles) / 2)
     num=0
     arg=np.zeros([nums,5])
+    plt.figure(figsize=(16, 9))
     while True:
         line = fitfiles[num].strip().split('K')
         line=line[0].strip().split("-")
-        arg[num, 1:] = fit(fitfiles[num + nums], fitfiles[num], line[1])
+        arg[num, 1:] = fitonefig(fitfiles[num + nums], fitfiles[num], line[1])
         arg[num,0]=line[1]
         num=num+1
         if num==nums:
             break
+    plt.tight_layout()
     plt.show()
 
 input("by fuyang ヽ(°∀°)ﾉ  \n 按任意键结束")
