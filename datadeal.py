@@ -142,12 +142,13 @@ def fitprocess():
         plt.tight_layout()
         plt.show()
 
+
 def halltest(name):
     """通过判断初始数据列数，确认是否有hall数据，如果3行则无hall数据"""
     a = open(name, "r+")
     data = a.readlines()
     a.close()
-    line = data[0].strip().split(',')  # strip()默认移除字符串首尾空格或换行符
+    line = data[0].strip().split('\t')  # strip()默认移除字符串首尾空格或换行符
     if len(line) > 3:
         return True
     else:
@@ -166,7 +167,14 @@ def addheadline(headline, oldfile, newfile):
     with open(oldfile, "r+")as fp:
         tmp_data = fp.read()  # 读取所有文件, 文件太大时不用使用此方法
         fp.seek(0)  # 移动游标
-        fpw = open(newfile, "w+")
+        try:
+            fpw = open(newfile,"r")
+        except IOError:
+            fpw = open(newfile, "w+")
+        else:
+            fpw.close()
+            print("报警："+newfile+"被覆盖")
+            fpw = open(newfile, "w+")
         fpw.write(headline + "\n" + tmp_data)
         fpw.close()
     os.remove(oldfile)
@@ -181,7 +189,7 @@ def savesinglefile(headlines, data, type, abc):
             if abc == "1,1,1":
                 headline = "Field(T),Rxx(ohm)"
             else:
-                headline = ["Field(T),rhoxx(ohm cm)"]
+                headline = "Field(T),rhoxx(ohm cm)"
             addheadline(headline, "tmp.dat", type + "-" + name[0] + ".dat")
 def Rtorho(data, abc):
     """电阻到电阻率"""
@@ -261,7 +269,7 @@ def dealdata(name, range, lie, interval, plot):
     rows = len(data)  # 数据总行
     l = 0
     for line in data:
-        line = line.strip().split(',')  # strip()默认移除字符串首尾空格或换行符
+        line = line.strip().split('\t')  # strip()默认移除字符串首尾空格或换行符
         if line[lie] == "--":
             l = l + 1
     rows = rows - l  # 确认非空数据行数
@@ -271,8 +279,8 @@ def dealdata(name, range, lie, interval, plot):
     Tchange = []  # 温度变化点
     Fchange = []  # 磁场变化点
     for line in data:
-        line = line.strip().split(',')
-        if line[lie] == "--":
+        line = line.strip().split('\t')
+        if line[lie] == "--" or line[lie] == "":
             continue
         data2[row, 0] = line[0]
         data2[row, 1] = line[1]
