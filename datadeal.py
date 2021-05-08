@@ -8,11 +8,13 @@ import matplotlib.pyplot as plt
 from scipy.optimize import leastsq
 from scipy.optimize import curve_fit
 import math
+import scipy.stats as st
 
 pi = 3.141592654
 h = 6.62607004 * 10 ** -34
 e = 1.60217733 * 10 ** -19
 me = 9.10938356 * 10 ** -30
+
 """
 使用origin删除掉废弃数据，最后留下四列（温度，磁场，电阻，霍尔）或者三列（温度，磁场，电阻）。保证每个温度，磁场都会从负值正值，或者正值到负值。
 使用origin导出ASCII，使用“，”作为分隔符。不要抬头，即输出文件只有数据。(如图)
@@ -29,6 +31,58 @@ me = 9.10938356 * 10 ** -30
 文件夹中的Sheet1.dat为示例文件。
 """
 workdir = os.getcwd()
+def fitRH(hallfile, temp):
+    """对hall数据文件和电阻数据文件拼接，并使用双带模型拟合，并对每一个温度产生一个电阻图和一个hall图"""
+    datahall = filetonumpy(hallfile)
+    # data = np.vstack((datahall,dataR[::-1, :]))
+    half = np.shape(datahall)[0]
+    plt.figure(figsize=(16, 9))
+    plt.plot(datahall[:, 0], datahall[:, 1], "rx", label=temp + "K")
+    delet=[]
+    i=0
+    print(datahall[:,0].shape)
+    while True:
+        if datahall[i,0]<4:
+            delet=delet+[i]
+        i=i+1
+        if i==datahall[:,0].shape[0]:
+            break
+    x=np.delete(datahall,delet,axis=0)
+    try:
+        slope, intercept, r_value, p_value, std_err = st.linregress(x[:, 0], x[:, 1])
+    except RuntimeError:
+        print(temp + "K拟合失败")
+    else:
+        plt.plot(datahall[:, 0], slope*datahall[:,0]+intercept, "k--", label=temp + "K-fit")
+        plt.legend()
+        with open("fitRH.dat", "a") as fitfile:
+            fitstr = temp
+            fitstr = fitstr + "," + "%e" % slope
+            fitstr = fitstr + "," + "%e" % intercept
+            fitfile.write(fitstr + "\n")
+    plt.show()
+    slope=slope*10000#单位转换
+    return slope, intercept
+def fitRHprocess():
+    fitfile = open("fittwoband.dat", "w+")
+    fitfile.write("Temp(K),RH,intercept\n")
+    fitfile.close()
+    fitfiles = [entry.path for entry in os.scandir(workdir) if entry.name.endswith("K.dat")]
+    nums = int(len(fitfiles) / 2)
+    num = 0
+    arg = np.zeros([nums, 3])
+    plt.figure(figsize=(16, 9))
+    while True:
+        line = fitfiles[num].strip().split('K')
+        line = line[0].strip().split("-")
+        arg[num, 1:] = fitRH(fitfiles[num], line[1])
+        arg[num, 0] = line[1]
+        num = num + 1
+        if num == nums:
+            break
+    plt.tight_layout()
+    plt.show()
+
 
 def filetonumpy(file):
     """将带有抬头的文件处理为数据矩阵"""
@@ -36,12 +90,15 @@ def filetonumpy(file):
         datastr = filedata.readlines()
     rows = len(datastr) - 1
     data = numpy.zeros([rows, 2])
-    for line in datastr:
-        row = datastr.index(line)
-        line = line.strip().split(',')
-        if line[0] != "Field(T)":
-            data[row - 1, 0] = line[0]
-            data[row - 1, 1] = line[1]
+    k=0
+    while True:
+        line = datastr[k].strip().split(',')
+        if line[0]!="Field(T)":
+            data[k - 1, 0] = line[0]
+            data[k - 1, 1] = line[1]
+        if k==rows:
+            break
+        k=k+1
     return data
 def function(x, ne, nh, miue, miuh):
     """双带拟合的函数"""
@@ -63,8 +120,10 @@ def fit(Rfile, hallfile, temp):
     plt.figure(figsize=(16, 9))
     plt.subplot(121)
     plt.plot(-1 * dataR[:, 0], dataR[:, 1], "rx", label=temp + "K")
+    plt.legend()
     plt.subplot(122)
     plt.plot(datahall[:, 0], datahall[:, 1], "rx", label=temp + "K")
+    plt.legend()
     try:
         p_est, err_est = curve_fit(function, data[:, 0], data[:, 1])
     except RuntimeError:
@@ -121,7 +180,7 @@ def fitprocess():
         fitfile = open("fit.dat", "w+")
         fitfile.write("Temp(K),ne,nh,miue,miuh\n")
         fitfile.close()
-        fitfiles = [entry.path for entry in os.scandir(workdir) if entry.name.endswith("K.dat")]
+        fitfiles = [entry.path for entry in os.scandir(workdir) if "K.dat" in entry.name]
         nums = int(len(fitfiles) / 2)
         num = 0
         arg = np.zeros([nums, 5])
@@ -173,24 +232,28 @@ def addheadline(headline, oldfile, newfile):
             fpw = open(newfile, "w+")
         else:
             fpw.close()
-            print("报警："+newfile+"被覆盖")
-            fpw = open(newfile, "w+")
+            print("报警："+newfile+"重复，已添加后缀")
+            fpw = open(newfile+"-2.dat", "w+")
         fpw.write(headline + "\n" + tmp_data)
         fpw.close()
     os.remove(oldfile)
 def savesinglefile(headlines, data, type, abc):
     """将处理后的每个温度的数据储存在单个文件"""
     headlines = headlines.strip().split(',')
-    for i in headlines:
-        # print(i)
-        if i != "Field(T)":
-            name = i.strip().split('(')
-            np.savetxt("tmp.dat", data[:, [0, headlines.index(i)]], fmt="%.8e", delimiter=",")
+    k=0
+    while True:
+        if headlines[k] != "Field(T)":
+            name = headlines[k].strip().split('(')
+            np.savetxt("tmp.dat", data[:, [0, k]], fmt="%.8e", delimiter=",")
             if abc == "1,1,1":
                 headline = "Field(T),Rxx(ohm)"
             else:
                 headline = "Field(T),rhoxx(ohm cm)"
             addheadline(headline, "tmp.dat", type + "-" + name[0] + ".dat")
+        if k==len(headlines)-1:
+            break
+        k=k+1
+
 def Rtorho(data, abc):
     """电阻到电阻率"""
     abc = abc.replace("，", ",")
@@ -347,10 +410,10 @@ def dealdata(name, range, lie, interval, plot):
 def deal(file, range, interval, abc):
     """处理数据的多个温度文件的储存"""
     if halltest(file):
-        plt.figure(figsize=(16, 9))
+        plt.figure(figsize=(32, 18))
         [dataR, headline] = dealdata(file, range, 2, interval, 221)
     else:
-        plt.figure(figsize=(8, 9))
+        plt.figure(figsize=(16, 18))
         [dataR, headline] = dealdata(file, range, 2, interval, 211)
     dataR = dataR.T[~(dataR == 0).all(0)].T  # 去除0列
     dataR = Rtorho(dataR, abc)
