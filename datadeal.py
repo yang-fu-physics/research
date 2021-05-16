@@ -15,21 +15,6 @@ h = 6.62607004 * 10 ** -34
 e = 1.60217733 * 10 ** -19
 me = 9.10938356 * 10 ** -30
 
-"""
-使用origin删除掉废弃数据，最后留下四列（温度，磁场，电阻，霍尔）或者三列（温度，磁场，电阻）。保证每个温度，磁场都会从负值正值，或者正值到负值。
-使用origin导出ASCII，使用“，”作为分隔符。不要抬头，即输出文件只有数据。(如图)
-将程序和数据文件放入同一文件夹。注意需要只有一个dat文件。
-
-运行程序，初始化大概需要几秒。
-输入参数，若直接回车则是使用默认值。
-最后会生成一张图，分别为原始的R，Ryx。以及处理后的rho，rhoyx。若输入为三列数据，则只有R。可以按需要保存。若输入的样品尺寸为1，1，1，则rho会自动改为R。
-会生成R数据和hall数据。文件名并附有样品尺寸的信息，尺寸的逗号中英文皆可。
-生成的数据文件可直接拖入origin中。
-
-有时候会报警，因为内插时遇到了相同的x，和不同的y。python会只保留一个点。对最终结果没有影响。
-
-文件夹中的Sheet1.dat为示例文件。
-"""
 workdir = os.getcwd()
 def fitRH(hallfile, temp):
     """对hall数据文件和电阻数据文件拼接，并使用双带模型拟合，并对每一个温度产生一个电阻图和一个hall图"""
@@ -151,6 +136,7 @@ def fitonefig(Rfile, hallfile, temp):
     data = np.vstack((dataR[::-1, :], datahall))
     # data = np.vstack((datahall,dataR[::-1, :]))
     half = np.shape(dataR)[0]
+    plt.figure(figsize=(16, 9))
     plt.subplot(121)
     plt.plot(-1 * dataR[:, 0], dataR[:, 1], "x", label=temp + "K")
     plt.legend()
@@ -184,32 +170,36 @@ def fitprocess():
         nums = int(len(fitfiles) / 2)
         num = 0
         arg = np.zeros([nums, 5])
-        plt.figure(figsize=(16, 9))
         oneormore = input("一个温度一个拟合图/所有温度合到一个图（y/n),回车默认为y")
-        while True:
-            line = fitfiles[num].strip().split('K')
-            line = line[0].strip().split("-")
-            if oneormore == "y" or oneormore == "":
-                arg[num, 1:] = fit(fitfiles[num + nums], fitfiles[num], line[1])
-            else:
-                arg[num, 1:] = fitonefig(fitfiles[num + nums], fitfiles[num], line[1])
+        try:
+            while True:
+                line = fitfiles[num].strip().split('K')
+                line = line[0].strip().split("-")
+                if oneormore == "y" or oneormore == "":
+                    arg[num, 1:] = fit(fitfiles[num + nums], fitfiles[num], line[1])
+                else:
+                    arg[num, 1:] = fitonefig(fitfiles[num + nums], fitfiles[num], line[1])
 
-            arg[num, 0] = line[1]
-            num = num + 1
-            if num == nums:
-                break
+                arg[num, 0] = line[1]
+                num = num + 1
+                if num == nums:
+                    break
+        except Exception as error:
+            print(error)
         plt.tight_layout()
         plt.show()
 
 
 def halltest(name):
-    """通过判断初始数据列数，确认是否有hall数据，如果3行则无hall数据"""
+    """通过判断初始数据列数，确认有几行数据，3列返回True"""
     a = open(name, "r+")
     data = a.readlines()
     a.close()
     line = data[0].strip().split('\t')  # strip()默认移除字符串首尾空格或换行符
     if len(line) > 3:
         return True
+        if len(line) >4:
+            print("报警：数据列数不标准")
     else:
         return False
 def plot(headline, data, rhoorhall):
@@ -322,8 +312,8 @@ def spit(dataT, range, lie, interval):
     # print(a1,a2)
     av = (inter(a1, range, lie, interval) + inter(a2, range, lie, interval)) / 2
     return av
-def dealdata(name, range, lie, interval, plot):
-    """处理数据的主体"""
+def dealdata(name, range, lie, interval, plot, type):
+    """处理数据的主体,type=2为R，type=3为hall"""
     dataall = np.zeros([int(range * 10000 / interval + 1), 40])
     plt.subplot(plot)
     a = open(name, "r+")
@@ -364,9 +354,9 @@ def dealdata(name, range, lie, interval, plot):
     while True:
         if i > 0:  # 以温度为依据分段
             dataT = data2[Tchange[i - 1]:Tchange[i], :]  # dataT为每个温度的分离
-            dataspit = spit(dataT, range, lie, interval)
+            dataspit = spit(dataT, range, type, interval)
             plt.plot(dataT[:, 1], dataT[:, 2], label="%.1f" % data2[Tchange[i - 1], 0] + "K")
-            if lie == 3:
+            if type == 3:
                 plt.ylabel("Ryx(ohm)")
             else:
                 plt.ylabel("R(ohm)")
@@ -378,11 +368,11 @@ def dealdata(name, range, lie, interval, plot):
                 dataT = data2[:, :]
             else:
                 dataT = data2[:Tchange[i], :]
-            dataspit = spit(dataT, range, lie, interval)
+            dataspit = spit(dataT, range, type, interval)
             dataall[:, 0] = dataspit[:, 0]
             dataall[:, i + 1] = dataspit[:, 1]
             plt.plot(dataT[:, 1], dataT[:, 2], label="%.1f" % data2[0, 0] + "K")
-            if lie == 3:
+            if type == 3:
                 plt.ylabel("Ryx(ohm)")
             else:
                 plt.ylabel("R(ohm)")
@@ -391,11 +381,11 @@ def dealdata(name, range, lie, interval, plot):
                 break
         if i == len(Tchange) - 1:  # 如果是最后一个点，则额外输出一个至最后的数组。并跳出循环
             dataT = data2[Tchange[i]:, :]
-            dataspit = spit(dataT, range, lie, interval)
+            dataspit = spit(dataT, range, type, interval)
             dataall[:, 0] = dataspit[:, 0]
             dataall[:, i + 2] = dataspit[:, 1]
             plt.plot(dataT[:, 1], dataT[:, 2], label="%.1f" % data2[Tchange[i], 0] + "K")
-            if lie == 3:
+            if type == 3:
                 plt.ylabel("Ryx(ohm)")
             else:
                 plt.ylabel("R(ohm)")
@@ -411,37 +401,55 @@ def deal(file, range, interval, abc):
     """处理数据的多个温度文件的储存"""
     if halltest(file):
         plt.figure(figsize=(32, 18))
-        [dataR, headline] = dealdata(file, range, 2, interval, 221)
+        [dataR, headline] = dealdata(file, range, 2, interval, 221,2)
+        type="R"
     else:
-        plt.figure(figsize=(16, 18))
-        [dataR, headline] = dealdata(file, range, 2, interval, 211)
-    dataR = dataR.T[~(dataR == 0).all(0)].T  # 去除0列
-    dataR = Rtorho(dataR, abc)
-    np.savetxt("dealed-R.dat", dataR, fmt="%.8e", delimiter=",")
-    headlinestr = "Field(T)"
-    for i in headline:
-        if abc == "1,1,1":
-            headlinestr = headlinestr + "," + "%.1f" % i + "K(ohm)"
+        type = input("检测到只有三列数据，请输入R或者H(hall)，回车默认R")
+        if type == "R" or type=="":
+            type="R"
+            plt.figure(figsize=(16, 18))
+            [dataR, headline] = dealdata(file, range, 2, interval, 211,2)
+    if type=="R":
+        dataR = dataR.T[~(dataR == 0).all(0)].T  # 去除0列
+        dataR = Rtorho(dataR, abc)
+        np.savetxt("dealed-R.dat", dataR, fmt="%.8e", delimiter=",")
+        headlinestr = "Field(T)"
+        for i in headline:
+            if abc == "1,1,1":
+                headlinestr = headlinestr + "," + "%.1f" % i + "K(ohm)"
+            else:
+                headlinestr = headlinestr + "," + "%.1f" % i + "K(ohm cm)"
+        addheadline(headlinestr, "dealed-R.dat", "dealed-R-" + abc + ".dat")
+        savesinglefile(headlinestr, dataR, "R", abc)
+        if halltest(file):
+            plt.subplot(223)
         else:
-            headlinestr = headlinestr + "," + "%.1f" % i + "K(ohm cm)"
-    addheadline(headlinestr, "dealed-R.dat", "dealed-R-" + abc + ".dat")
-    savesinglefile(headlinestr, dataR, "R", abc)
-    if halltest(file):
-        plt.subplot(223)
-    else:
-        plt.subplot(212)
-    if abc == "1,1,1":
-        plot(headline, dataR, "R(ohm)")
-    else:
-        plot(headline, dataR, "rho(ohm cm)")
+            plt.subplot(212)
+        if abc == "1,1,1":
+            plot(headline, dataR, "R(ohm)")
+        else:
+            plot(headline, dataR, "rho(ohm cm)")
     # hall处理
-    if halltest(file):
-        [datahall, headline] = dealdata(file, range, 3, interval, 222)
+    if halltest(file) or type=="H":
+        if type=="H":
+            plt.figure(figsize=(16, 18))
+            [datahall, headline] = dealdata(file, range, 2, interval, 211, 3)
+        else:
+            [datahall, headline] = dealdata(file, range, 3, interval, 222,3)
         datahall = datahall.T[~(datahall == 0).all(0)].T  # 去除0列
         datahall = Ryxtorhoyx(datahall, abc)
+        headlinestr = "Field(T)"
+        for i in headline:
+            if abc == "1,1,1":
+                headlinestr = headlinestr + "," + "%.1f" % i + "K(ohm)"
+            else:
+                headlinestr = headlinestr + "," + "%.1f" % i + "K(ohm cm)"
         np.savetxt("dealed-hall.dat", datahall, fmt="%.8e", delimiter=",")
         addheadline(headlinestr, "dealed-hall.dat", "dealed-hall-" + abc + ".dat")
-        plt.subplot(224)
+        if type=="H":
+            plt.subplot(212)
+        else:
+            plt.subplot(224)
         if abc == "1,1,1":
             plot(headline, datahall, "Ryx(ohm)")
         else:
@@ -474,6 +482,10 @@ if 0==0:
         print("长宽高分别为" + abc)
         input("确认参数")
         abc = abc.replace("，", ",")
+        #try:
         deal(file[0], range, interval, abc)
-fitprocess()
+        #except Exception as error:
+            #print(error)
+        fitprocess()
+
 input("by fuyang ヽ(°∀°)ﾉ  \n 按任意键结束")
