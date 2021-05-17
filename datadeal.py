@@ -197,9 +197,10 @@ def halltest(name):
     a.close()
     line = data[0].strip().split('\t')  # strip()默认移除字符串首尾空格或换行符
     if len(line) > 3:
-        return True
         if len(line) >4:
             print("报警：数据列数不标准")
+            input("输入任意键确认或直接关闭窗口退出")
+        return True
     else:
         return False
 def plot(headline, data, rhoorhall):
@@ -208,7 +209,7 @@ def plot(headline, data, rhoorhall):
     for i in headline:
         plt.plot(data[:, 0], data[:, j + 1], label="%.1f" % i + "K")
         j = j + 1
-    plt.legend()
+    plt.legend(bbox_to_anchor=(1.02, 1), loc='upper left', fontsize='small')
     plt.ylabel(rhoorhall)
     plt.xlabel("Field(T)")
 def addheadline(headline, oldfile, newfile):
@@ -394,20 +395,20 @@ def dealdata(name, range, lie, interval, plot, type):
         # print(i)
 
         i = i + 1
-    plt.legend()
+    plt.legend(bbox_to_anchor=(1.02, 1), loc='upper left', fontsize='small')
     Tchange.insert(0, int(0))
     return dataall, data2[Tchange, 0]
 def deal(file, range, interval, abc):
     """处理数据的多个温度文件的储存"""
     if halltest(file):
-        plt.figure(figsize=(32, 18))
+        plt.figure(figsize=(16, 9))
         [dataR, headline] = dealdata(file, range, 2, interval, 221,2)
         type="R"
     else:
         type = input("检测到只有三列数据，请输入R或者H(hall)，回车默认R")
         if type == "R" or type=="":
             type="R"
-            plt.figure(figsize=(16, 18))
+            plt.figure(figsize=(8, 9))
             [dataR, headline] = dealdata(file, range, 2, interval, 211,2)
     if type=="R":
         dataR = dataR.T[~(dataR == 0).all(0)].T  # 去除0列
@@ -432,7 +433,7 @@ def deal(file, range, interval, abc):
     # hall处理
     if halltest(file) or type=="H":
         if type=="H":
-            plt.figure(figsize=(16, 18))
+            plt.figure(figsize=(8, 9))
             [datahall, headline] = dealdata(file, range, 2, interval, 211, 3)
         else:
             [datahall, headline] = dealdata(file, range, 3, interval, 222,3)
@@ -482,10 +483,10 @@ if 0==0:
         print("长宽高分别为" + abc)
         input("确认参数")
         abc = abc.replace("，", ",")
-        #try:
-        deal(file[0], range, interval, abc)
-        #except Exception as error:
-            #print(error)
-        fitprocess()
+        try:
+            deal(file[0], range, interval, abc)
+            fitprocess()
+        except Exception as error:
+            print(error)
 
 input("by fuyang ヽ(°∀°)ﾉ  \n 按任意键结束")
