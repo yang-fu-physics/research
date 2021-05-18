@@ -28,7 +28,25 @@ me = 9.10938356 * 10 ** -30
 
 文件夹中的Sheet1.dat为示例文件。
 """
+
 workdir = os.getcwd()
+def rename(newfile):
+    i = 2
+    last=newfile.strip().split('.')[-1]
+    newfile = newfile[:-1*len(last)-1]
+    while True:
+        try:
+            fpw = open(newfile+"."+last, "r")  # 如果不存在会报错
+            fpw.close
+            if i == 2:
+                newfile = newfile + "(%i)" % i
+            else:
+                newfile = newfile[:-3] + "(%i)" % i
+            i = i + 1
+        except IOError:
+            break
+    newfile=newfile+"."+last
+    return newfile
 def Rtorho(data, abc):
     """电阻到电阻率"""
     abc = abc.replace("，", ",")
@@ -66,32 +84,32 @@ def addheadline(headline, oldfile, newfile):
     with open(oldfile, "r+")as fp:
         tmp_data = fp.read()  # 读取所有文件, 文件太大时不用使用此方法
         fp.seek(0)  # 移动游标
-        try:
-            fpw = open(newfile,"r")
-        except IOError:
-            fpw = open(newfile, "w+")
-        else:
-            fpw.close()
-            print("报警："+newfile+"被覆盖")
-            fpw = open(newfile, "w+")
+        fpw=open(rename(newfile),"w+")
         fpw.write(headline + "\n" + tmp_data)
         fpw.close()
     os.remove(oldfile)
 def savesinglefile(headlines, data, type, abc):
     """将处理后的每个温度的数据储存在单个文件"""
     headlines = headlines.strip().split(',')
-    for i in headlines:
-        # print(i)
-        if i != "Temp(K)":
-            name = i.strip().split('(')
-            datacut=data[:, [0, headlines.index(i)]]
-            datacut = datacut[~(datacut == 0).all(1)]
-            np.savetxt("tmp.dat", datacut, fmt="%.8e", delimiter=",")
+    k=0
+    while True:
+        if headlines[k] != "Temp(K)":
+            name = headlines[k].strip().split('(')
+            np.savetxt("tmp.dat", data[:, [0, k]], fmt="%.8e", delimiter=",")
             if abc == "1,1,1":
-                headline = "Temp(K),Rxx(ohm)"
+                if type=="hall":
+                    headline = "Temp(K),Ryx(ohm)"
+                else:
+                    headline = "Temp(K),Rxx(ohm)"
             else:
-                headline = "Temp(K),rhoxx(ohm cm)"
-            addheadline(headline, "tmp.dat", type + "-" + name[0] + ".dat")
+                if type=="hall":
+                    headline = "Temp(K),rhoyx(ohm)"
+                else:
+                    headline = "Temp(K),rhoyx(ohm cm)"
+            addheadline(headline, "tmp.dat", workdir+type + "-" + name[0] + ".dat")
+        if k==len(headlines)-1:
+            break
+        k=k+1
 def halltest(name):
     """通过判断初始数据列数，确认是否有hall数据，如果3行则无hall数据"""
     a = open(name, "r+")
@@ -186,10 +204,10 @@ def dealdata(name, lie, plot):
 def deal(file, abc):
     """处理数据的多个温度文件的储存"""
     if halltest(file):
-        plt.figure(figsize=(16, 9))
+        fig=plt.figure(figsize=(16, 9))
         [dataR, headline] = dealdata(file, 2, 211)
     else:
-        plt.figure(figsize=(8, 9))
+        fig=plt.figure(figsize=(8, 9))
         [dataR, headline] = dealdata(file, 2, 111)
     dataR = dataR.T[~(dataR == 0).all(0)].T  # 去除0列
     dataR = dataR[~(dataR == 0).all(1)]
@@ -213,6 +231,7 @@ def deal(file, abc):
         savesinglefile(headlinestr, datahall, "hall", abc)
     plt.tight_layout()
     plt.show()
+    fig.savefig(rename("alldata.png"))
 file = [entry.path for entry in os.scandir(workdir) if entry.name.endswith(".dat")]
 if 0==0:
     if len(file) > 1:
