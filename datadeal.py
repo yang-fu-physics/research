@@ -16,18 +16,35 @@ e = 1.60217733 * 10 ** -19
 me = 9.10938356 * 10 ** -30
 
 workdir = os.getcwd()
-def fitRH(hallfile, temp):
-    """对hall数据文件和电阻数据文件拼接，并使用双带模型拟合，并对每一个温度产生一个电阻图和一个hall图"""
+workdirdata=workdir+"/data/"
+workdirfit=workdir+"/fit/"
+def rename(newfile):
+    i = 2
+    last=newfile.strip().split('.')[-1]
+    newfile = newfile[:-1*len(last)-1]
+    while True:
+        try:
+            fpw = open(newfile+"."+last, "r")  # 如果不存在会报错
+            fpw.close
+            if i == 2:
+                newfile = newfile + "(%i)" % i
+            else:
+                newfile = newfile[:-3] + "(%i)" % i
+            i = i + 1
+        except IOError:
+            break
+    newfile=newfile+"."+last
+    return newfile
+def fitRH(hallfile, temp,low ,high):
+    """对hall数"""
     datahall = filetonumpy(hallfile)
     # data = np.vstack((datahall,dataR[::-1, :]))
-    half = np.shape(datahall)[0]
-    plt.figure(figsize=(16, 9))
+    figRH=plt.figure(figsize=(16, 9))
     plt.plot(datahall[:, 0], datahall[:, 1], "rx", label=temp + "K")
     delet=[]
     i=0
-    print(datahall[:,0].shape)
     while True:
-        if datahall[i,0]<4:
+        if datahall[i,0]<low or datahall[i,0]>high:
             delet=delet+[i]
         i=i+1
         if i==datahall[:,0].shape[0]:
@@ -40,33 +57,42 @@ def fitRH(hallfile, temp):
     else:
         plt.plot(datahall[:, 0], slope*datahall[:,0]+intercept, "k--", label=temp + "K-fit")
         plt.legend()
-        with open("fitRH.dat", "a") as fitfile:
+        with open(workdirfit+"fitRH.dat", "a") as fitfile:
             fitstr = temp
             fitstr = fitstr + "," + "%e" % slope
             fitstr = fitstr + "," + "%e" % intercept
+            fitstr = fitstr + "," + "%e" % r_value
             fitfile.write(fitstr + "\n")
-    plt.show()
+    plt.close()
+    figRH.savefig(rename(workdirfit + "RH-" + temp + "K.png"))
     slope=slope*10000#单位转换
-    return slope, intercept
+    return slope, intercept, r_value
 def fitRHprocess():
-    fitfile = open("fittwoband.dat", "w+")
-    fitfile.write("Temp(K),RH,intercept\n")
-    fitfile.close()
-    fitfiles = [entry.path for entry in os.scandir(workdir) if entry.name.endswith("K.dat")]
-    nums = int(len(fitfiles) / 2)
-    num = 0
-    arg = np.zeros([nums, 3])
-    plt.figure(figsize=(16, 9))
-    while True:
-        line = fitfiles[num].strip().split('K')
-        line = line[0].strip().split("-")
-        arg[num, 1:] = fitRH(fitfiles[num], line[1])
-        arg[num, 0] = line[1]
-        num = num + 1
-        if num == nums:
-            break
-    plt.tight_layout()
-    plt.show()
+    fitornot = input("是否进行RH线性拟合（y/n），回车默认不拟合\n")
+    if fitornot == "y":
+        fitfile = open(workdirfit+"fitRH.dat", "w+")
+        fitfile.write("Temp(K),RH(cm^3/C),intercept(ohm cm),Correlation coefficient\n")
+        fitfile.close()
+        fitfiles = [entry.path for entry in os.scandir(workdir+"/data") if "K" in entry.name and "hall" in entry.name]
+        nums = len(fitfiles)
+        num = 0
+        arg = np.zeros([nums, 4])
+        range = input("请输入RH线性拟合范围，示例：4-9，回车默认0-14\n")
+        if range == "":
+            low = 0
+            high = 14
+        else:
+            range = range.strip().split('-')
+            low = float(range[0])
+            high = float(range[1])
+        while True:
+            line = fitfiles[num].strip().split('K')
+            line = line[0].strip().split("-")
+            arg[num, 1:] = fitRH(fitfiles[num], line[1],low,high)
+            arg[num, 0] = line[1]
+            num = num + 1
+            if num == nums:
+                break
 
 
 def filetonumpy(file):
@@ -102,7 +128,7 @@ def fit(Rfile, hallfile, temp):
     data = np.vstack((dataR[::-1, :], datahall))
     # data = np.vstack((datahall,dataR[::-1, :]))
     half = np.shape(dataR)[0]
-    plt.figure(figsize=(16, 9))
+    figtwo=plt.figure(figsize=(16, 9))
     plt.subplot(121)
     plt.plot(-1 * dataR[:, 0], dataR[:, 1], "rx", label=temp + "K")
     plt.legend()
@@ -121,12 +147,13 @@ def fit(Rfile, hallfile, temp):
         plt.subplot(122)
         plt.plot(data[half + 1:, 0], function(data[half + 1:, 0], *p_est), "k--", label=temp + "K-fit")
         plt.legend()
-        with open("fit.dat", "a") as fitfile:
+        with open(workdirfit+"twobandfit.dat", "a") as fitfile:
             fitstr = temp
             for i in p_est:
                 fitstr = fitstr + "," + "%e" % i
             fitfile.write(fitstr + "\n")
-    plt.show()
+    plt.close()
+    figtwo.savefig(rename(workdirfit + "twoband-" + temp + "K.png"))
     return p_est
 def fitonefig(Rfile, hallfile, temp):
     """对hall数据文件和电阻数据文件拼接，并使用双带模型拟合，并对产生一个电阻图和一个hall图"""
@@ -153,7 +180,7 @@ def fitonefig(Rfile, hallfile, temp):
         plt.plot(-1 * data[:half, 0], function(data[:half, 0], *p_est), "r--")
         plt.subplot(122)
         plt.plot(data[half + 1:, 0], function(data[half + 1:, 0], *p_est), "r--")
-        with open("fit.dat", "a") as fitfile:
+        with open(workdirfit+"twobandfit.dat", "a") as fitfile:
             fitstr = temp
             for i in p_est:
                 fitstr = fitstr + "," + "%e" % i
@@ -161,16 +188,19 @@ def fitonefig(Rfile, hallfile, temp):
     return p_est
 def fitprocess():
     """拟合主流程"""
-    fitornot = input("是否进行拟合（y/n），回车默认拟合")
-    if fitornot == "y" or fitornot == "":
-        fitfile = open("fit.dat", "w+")
+    fitfiles = [entry.path for entry in os.scandir(workdirdata) if "1,1,1" in entry.name]
+    if fitfiles != []:
+        print("警告：由于dealed-hall-1,1,1.dat存在，认为没有进行ohm至ohm cm的计算，不推荐进行拟合计算")
+    fitornot = input("是否进行双带线性拟合（y/n），回车默认不拟合，拟合会产生每个温度的拟合图像\n")
+    if fitornot == "y":
+        fitfile = open(workdirfit+"twobandfit.dat", "w+")
         fitfile.write("Temp(K),ne,nh,miue,miuh\n")
         fitfile.close()
-        fitfiles = [entry.path for entry in os.scandir(workdir) if "K.dat" in entry.name]
+        fitfiles = [entry.path for entry in os.scandir(workdir+"\data") if "K" in entry.name]
         nums = int(len(fitfiles) / 2)
         num = 0
         arg = np.zeros([nums, 5])
-        oneormore = input("一个温度一个拟合图/所有温度合到一个图（y/n),回车默认为y")
+        oneormore = ""#input("一个温度一个拟合图/所有温度合到一个图（y/n),回车默认为y\n")
         try:
             while True:
                 line = fitfiles[num].strip().split('K')
@@ -179,9 +209,6 @@ def fitprocess():
                     arg[num, 1:] = fit(fitfiles[num + nums], fitfiles[num], line[1])
                 else:
                     arg[num, 1:] = fitonefig(fitfiles[num + nums], fitfiles[num], line[1])
-
-                arg[num, 0] = line[1]
-                num = num + 1
                 if num == nums:
                     break
         except Exception as error:
@@ -217,14 +244,7 @@ def addheadline(headline, oldfile, newfile):
     with open(oldfile, "r+")as fp:
         tmp_data = fp.read()  # 读取所有文件, 文件太大时不用使用此方法
         fp.seek(0)  # 移动游标
-        try:
-            fpw = open(newfile,"r")
-        except IOError:
-            fpw = open(newfile, "w+")
-        else:
-            fpw.close()
-            print("报警："+newfile+"重复，已添加后缀")
-            fpw = open(newfile+"-2.dat", "w+")
+        fpw=open(rename(newfile),"w+")
         fpw.write(headline + "\n" + tmp_data)
         fpw.close()
     os.remove(oldfile)
@@ -237,10 +257,16 @@ def savesinglefile(headlines, data, type, abc):
             name = headlines[k].strip().split('(')
             np.savetxt("tmp.dat", data[:, [0, k]], fmt="%.8e", delimiter=",")
             if abc == "1,1,1":
-                headline = "Field(T),Rxx(ohm)"
+                if type=="hall":
+                    headline = "Field(T),Ryx(ohm)"
+                else:
+                    headline = "Field(T),Rxx(ohm)"
             else:
-                headline = "Field(T),rhoxx(ohm cm)"
-            addheadline(headline, "tmp.dat", type + "-" + name[0] + ".dat")
+                if type=="hall":
+                    headline = "Field(T),rhoyx(ohm)"
+                else:
+                    headline = "Field(T),rhoyx(ohm cm)"
+            addheadline(headline, "tmp.dat", workdirdata+type + "-" + name[0] + ".dat")
         if k==len(headlines)-1:
             break
         k=k+1
@@ -282,7 +308,8 @@ def inter(m, range, lie, interval):
     a = 1
     if m[0, 1] < 0:
         a = -1
-    fx = interpolate.interp1d(m[:, 1] / 10000, m[:, 2], kind="linear",
+    u, indices = np.unique(m[:, 1], return_index=True)
+    fx = interpolate.interp1d(m[indices, 1] / 10000, m[indices, 2], kind="linear",
                               fill_value="extrapolate")  # 'linear','zero', 'slinear', 'quadratic', 'cubic'
     internumber = int(range * 10000 / interval + 1)
     x = np.linspace(0, a * range, internumber)
@@ -401,26 +428,26 @@ def dealdata(name, range, lie, interval, plot, type):
 def deal(file, range, interval, abc):
     """处理数据的多个温度文件的储存"""
     if halltest(file):
-        plt.figure(figsize=(16, 9))
+        fig=plt.figure(figsize=(16, 9))
         [dataR, headline] = dealdata(file, range, 2, interval, 221,2)
         type="R"
     else:
         type = input("检测到只有三列数据，请输入R或者H(hall)，回车默认R")
         if type == "R" or type=="":
             type="R"
-            plt.figure(figsize=(8, 9))
+            fig=plt.figure(figsize=(8, 9))
             [dataR, headline] = dealdata(file, range, 2, interval, 211,2)
     if type=="R":
         dataR = dataR.T[~(dataR == 0).all(0)].T  # 去除0列
         dataR = Rtorho(dataR, abc)
-        np.savetxt("dealed-R.dat", dataR, fmt="%.8e", delimiter=",")
+        np.savetxt(workdirdata+"dealed-R.dat", dataR, fmt="%.8e", delimiter=",")
         headlinestr = "Field(T)"
         for i in headline:
             if abc == "1,1,1":
                 headlinestr = headlinestr + "," + "%.1f" % i + "K(ohm)"
             else:
                 headlinestr = headlinestr + "," + "%.1f" % i + "K(ohm cm)"
-        addheadline(headlinestr, "dealed-R.dat", "dealed-R-" + abc + ".dat")
+        addheadline(headlinestr, workdirdata+"dealed-R.dat", workdirdata+"dealed-R-" + abc + ".dat")
         savesinglefile(headlinestr, dataR, "R", abc)
         if halltest(file):
             plt.subplot(223)
@@ -433,7 +460,7 @@ def deal(file, range, interval, abc):
     # hall处理
     if halltest(file) or type=="H":
         if type=="H":
-            plt.figure(figsize=(8, 9))
+            fig=plt.figure(figsize=(8, 9))
             [datahall, headline] = dealdata(file, range, 2, interval, 211, 3)
         else:
             [datahall, headline] = dealdata(file, range, 3, interval, 222,3)
@@ -445,8 +472,8 @@ def deal(file, range, interval, abc):
                 headlinestr = headlinestr + "," + "%.1f" % i + "K(ohm)"
             else:
                 headlinestr = headlinestr + "," + "%.1f" % i + "K(ohm cm)"
-        np.savetxt("dealed-hall.dat", datahall, fmt="%.8e", delimiter=",")
-        addheadline(headlinestr, "dealed-hall.dat", "dealed-hall-" + abc + ".dat")
+        np.savetxt(workdirdata+"dealed-hall.dat", datahall, fmt="%.8e", delimiter=",")
+        addheadline(headlinestr, workdirdata+"dealed-hall.dat", workdirdata+"dealed-hall-" + abc + ".dat")
         if type=="H":
             plt.subplot(212)
         else:
@@ -458,13 +485,23 @@ def deal(file, range, interval, abc):
         savesinglefile(headlinestr, datahall, "hall", abc)
     plt.tight_layout()
     plt.show()
+    fig.savefig("alldata.png")
 
-file = [entry.path for entry in os.scandir(workdir) if entry.name.endswith(".dat")]
-if 0==0:
-    if len(file) > 1:
+if os.path.exists(workdirdata):
+    input("已有data文件夹，如需处理原始数据请删除该文件夹重新运行程序。如需进行拟合则任意键继续")
+    run=0
+else:
+    run=1
+    try:
+        os.makedirs(workdir+"/data",777)
+    except Exception as result:
+        pass
+if run==1:
+    datafile = [entry.path for entry in os.scandir(workdir) if entry.name.endswith(".dat")]
+    if len(datafile) > 1:
         print("dat文件过多")
     else:
-        print("文件名是" + file[0])
+        print("文件名是" + datafile[0])
         range = input("输入内插范围（整数）,最大值即可,回车则默认为14\n")
         if range == "":
             range = 14
@@ -483,10 +520,22 @@ if 0==0:
         print("长宽高分别为" + abc)
         input("确认参数")
         abc = abc.replace("，", ",")
+        #deal(datafile[0], range, interval, abc)
         try:
-            deal(file[0], range, interval, abc)
-            fitprocess()
+            deal(datafile[0], range, interval, abc)
         except Exception as error:
             print(error)
-
+if os.path.exists(workdirfit):
+    input("已有fit文件夹，如需分析请删除fit文件夹重新运行程序。")
+else:
+    os.makedirs(workdir + "/fit", 777)
+    try:
+        fitprocess()
+        fitRHprocess()
+    except Exception as error:
+        print(error)
+try:
+    os.removedirs(workdirfit)
+except Exception as error:
+    pass
 input("by fuyang ヽ(°∀°)ﾉ  \n 按任意键结束")
