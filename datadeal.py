@@ -236,7 +236,7 @@ def halltest(name):
     if len(line) > 3:
         if len(line) >4:
             print("报警：数据列数不标准")
-            input("输入任意键确认或直接关闭窗口退出")
+            input("输入任意键继续或直接关闭窗口退出")
         return True
     else:
         return False

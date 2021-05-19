@@ -41,7 +41,7 @@ def rename(newfile):
             if i == 2:
                 newfile = newfile + "(%i)" % i
             else:
-                newfile = newfile[:-3] + "(%i)" % i
+                newfile = newfile[:-1*len(str(i))-2] + "(%i)" % i
             i = i + 1
         except IOError:
             break
@@ -95,7 +95,7 @@ def savesinglefile(headlines, data, type, abc):
     while True:
         if headlines[k] != "Temp(K)":
             name = headlines[k].strip().split('(')
-            np.savetxt("tmp.dat", data[:, [0, k]], fmt="%.8e", delimiter=",")
+            np.savetxt("tmp.dat", data[:, [k-1, k]], fmt="%.8e", delimiter=",")
             if abc == "1,1,1":
                 if type=="hall":
                     headline = "Temp(K),Ryx(ohm)"
@@ -106,7 +106,7 @@ def savesinglefile(headlines, data, type, abc):
                     headline = "Temp(K),rhoyx(ohm)"
                 else:
                     headline = "Temp(K),rhoyx(ohm cm)"
-            addheadline(headline, "tmp.dat", workdir+type + "-" + name[0] + ".dat")
+            addheadline(headline, "tmp.dat", type + "-" + name[0] + ".dat")
         if k==len(headlines)-1:
             break
         k=k+1
@@ -117,6 +117,9 @@ def halltest(name):
     a.close()
     line = data[0].strip().split('\t')  # strip()默认移除字符串首尾空格或换行符
     if len(line) > 3:
+        if len(line) > 4:
+            print("报警：数据列数不标准")
+            input("输入任意键继续或直接关闭窗口退出")
         return True
     else:
         return False
@@ -147,7 +150,7 @@ def dealdata(name, lie, plot):
         data2[row, 2] = line[lie]  # 数据转移至data2并处理空格
         # print(data2[row,0])
         if row > 0:
-            if abs(data2[row, 1] - data2[row - 1, 1]) > 100:  # 判读温度转变点
+            if abs(data2[row, 1] - data2[row - 1, 1]) > 100:  # 判读field转变点
                 Tchange.append(row)
         row += 1
     # print(Tchange)
@@ -168,14 +171,14 @@ def dealdata(name, lie, plot):
                 plt.ylabel("R(ohm)")
             plt.xlabel("Temp(K)")
             dataall[:dataT.shape[0], 2*i] = dataT[:, 0]
-            dataall[:dataT.shape[0], 2*i + 1] = dataT[:, 1]
+            dataall[:dataT.shape[0], 2*i + 1] = dataT[:, 2]
         else:  # 第一组则取0：。
             if Tchange == []:
                 dataT = data2[:, :]
             else:
                 dataT = data2[:Tchange[i], :]
             dataall[:dataT.shape[0], 0] = dataT[:, 0]
-            dataall[:dataT.shape[0], 1] = dataT[:, 1]
+            dataall[:dataT.shape[0], 1] = dataT[:, 2]
             plt.plot(dataT[:, 0], dataT[:, 2], label="%.2f" % (round(data2[0, 1]/10)/1000) + "T")
             if lie == 3:
                 plt.ylabel("Ryx(ohm)")
@@ -187,7 +190,7 @@ def dealdata(name, lie, plot):
         if i == len(Tchange) - 1:  # 如果是最后一个点，则额外输出一个至最后的数组。并跳出循环
             dataT = data2[Tchange[i]:, :]
             dataall[:dataT.shape[0], 2*i+2] = dataT[:, 0]
-            dataall[:dataT.shape[0], 2*i + 3] = dataT[:, 1]
+            dataall[:dataT.shape[0], 2*i + 3] = dataT[:, 2]
             plt.plot(dataT[:, 0], dataT[:, 2], label="%.2f" % (round(data2[Tchange[i], 1]/10)/1000) + "T")
             if lie == 3:
                 plt.ylabel("Ryx(ohm)")
@@ -204,25 +207,26 @@ def dealdata(name, lie, plot):
 def deal(file, abc):
     """处理数据的多个温度文件的储存"""
     if halltest(file):
-        fig=plt.figure(figsize=(16, 9))
-        [dataR, headline] = dealdata(file, 2, 211)
+        fig=plt.figure(figsize=(19.2, 10.8))
+        [dataR, headline] = dealdata(file, 2, 121)
     else:
-        fig=plt.figure(figsize=(8, 9))
+        fig=plt.figure(figsize=(9.6, 10.8))
         [dataR, headline] = dealdata(file, 2, 111)
     dataR = dataR.T[~(dataR == 0).all(0)].T  # 去除0列
     dataR = dataR[~(dataR == 0).all(1)]
     np.savetxt("dealed-R.dat", dataR, fmt="%.8e", delimiter=",")
-    headlinestr = "Temp(K)"
+    headlinestr = ""
     for i in headline:
         if abc == "1,1,1":
-            headlinestr = headlinestr + "," + "%.2f" % (round(i/10)/1000) + "T(ohm)"
+            headlinestr = headlinestr + "Temp(K)," + "%.2f" % (round(i/10)/1000) + "T(ohm)"
         else:
-            headlinestr = headlinestr + "," + "%.2f" % (round(i/10)/1000) + "T(ohm cm)"
+            headlinestr = headlinestr + "Temp(K)," + "%.2f" % (round(i/10)/1000) + "T(ohm cm)"
+    headlinestr = headlinestr[:-1]
     addheadline(headlinestr, "dealed-R.dat", "dealed-R-" + abc + ".dat")
     savesinglefile(headlinestr, dataR, "R", abc)
     # hall处理
     if halltest(file):
-        [datahall, headline] = dealdata(file, 3, 212)
+        [datahall, headline] = dealdata(file, 3, 122)
         datahall = datahall[~(datahall == 0).all(1)]
         datahall = datahall.T[~(datahall == 0).all(0)].T  # 去除0列
         datahall = Ryxtorhoyx(datahall, abc)
