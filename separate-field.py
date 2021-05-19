@@ -1,13 +1,6 @@
 import os
-import math
-
-import numpy
-from scipy import interpolate
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy.optimize import leastsq
-from scipy.optimize import curve_fit
-import math
 
 pi = 3.141592654
 h = 6.62607004 * 10 ** -34
@@ -236,30 +229,34 @@ def deal(file, abc):
     plt.tight_layout()
     plt.show()
     fig.savefig(rename("alldata.png"))
-file = [entry.path for entry in os.scandir(workdir) if entry.name.endswith(".dat")]
-if 0==0:
-    if len(file) > 1:
-        print("dat文件过多")
-    else:
-        print("文件名是" + file[0])
-        abc = input("输入长宽高，逗号隔开，单位为cm，回车则皆为1，即输出为电阻\n")
-        if abc == "":
-            abc = "1,1,1"
-        print("长宽高分别为" + abc)
-        input("确认参数")
-        abc = abc.replace("，", ",")
-        deal(file[0], abc)
-file = [entry.path for entry in os.scandir(workdir) if entry.name.endswith(".dat")]
-for i in file:
-    with open(i,"r+")as fp:
-        b=open("tmp.dat","w+")
-        for line in fp:
-            line = line.replace("0.00000000e+00", "")
-            b.write(line)
-        b.close()
-    with open("tmp.dat","r+") as fp:
-        c=open(i,"w+")
-        for line in fp:
-            c.write(line)
-        c.close()
-os.remove("tmp.dat")
+try:
+    file = [entry.path for entry in os.scandir(workdir) if entry.name.endswith(".dat")]
+    if 0==0:
+        if len(file) > 1:
+            print("dat文件过多")
+        else:
+            print("文件名是" + file[0])
+            abc = input("输入长宽高，逗号隔开，单位为cm，回车则皆为1，即输出为电阻\n")
+            if abc == "":
+                abc = "1,1,1"
+            print("长宽高分别为" + abc)
+            input("确认参数")
+            abc = abc.replace("，", ",")
+            deal(file[0], abc)
+    file = [entry.path for entry in os.scandir(workdir) if entry.name.endswith(".dat")]
+    for i in file:
+        with open(i,"r+")as fp:
+            b=open("tmp.dat","w+")
+            for line in fp:
+                line = line.replace("0.00000000e+00", "")
+                b.write(line)
+            b.close()
+        with open("tmp.dat","r+") as fp:
+            c=open(i,"w+")
+            for line in fp:
+                c.write(line)
+            c.close()
+    os.remove("tmp.dat")
+except Exception as error:
+    print(error)
+input("by fuyang ヽ(°∀°)ﾉ  \n 按任意键结束")

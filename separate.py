@@ -1,13 +1,5 @@
 import os
-import math
-
-import numpy
-from scipy import interpolate
 import numpy as np
-import matplotlib.pyplot as plt
-from scipy.optimize import leastsq
-from scipy.optimize import curve_fit
-import math
 
 pi = 3.141592654
 h = 6.62607004 * 10 ** -34
@@ -55,9 +47,13 @@ def deal(file):
         i=i+1
         if i==len(line):
             break
-file = [entry.path for entry in os.scandir(workdir) if entry.name.endswith(".dat")]
-if 0==0:
-    if len(file) > 1:
-        print("dat文件过多")
-    else:
-        deal(file[0])
+try:
+    file = [entry.path for entry in os.scandir(workdir) if entry.name.endswith(".dat")]
+    if 0==0:
+        if len(file) > 1:
+            print("dat文件过多")
+        else:
+            deal(file[0])
+except Exception as error:
+    print(error)
+input("by fuyang ヽ(°∀°)ﾉ  \n 按任意键结束")

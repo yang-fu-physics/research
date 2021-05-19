@@ -1,13 +1,10 @@
 import os
-import math
 
 import numpy
 from scipy import interpolate
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy.optimize import leastsq
 from scipy.optimize import curve_fit
-import math
 import scipy.stats as st
 
 pi = 3.141592654
