@@ -29,7 +29,7 @@ def rename(newfile):
             if i == 2:
                 newfile = newfile + "(%i)" % i
             else:
-                newfile = newfile[:-3] + "(%i)" % i
+                newfile = newfile[:-1*len(str(i))-2] + "(%i)" % i
             i = i + 1
         except IOError:
             break
@@ -74,25 +74,31 @@ def fitRHprocess():
         fitfile.write("Temp(K),RH(cm^3/C),intercept(ohm cm),Correlation coefficient\n")
         fitfile.close()
         fitfiles = [entry.path for entry in os.scandir(workdir+"/data") if "K" in entry.name and "hall" in entry.name]
-        nums = len(fitfiles)
-        num = 0
-        arg = np.zeros([nums, 4])
-        range = input("请输入RH线性拟合范围，示例：4-9，回车默认0-14\n")
-        if range == "":
-            low = 0
-            high = 14
+        if fitfiles==[]:
+            print('没有hall文件')
         else:
-            range = range.strip().split('-')
-            low = float(range[0])
-            high = float(range[1])
-        while True:
-            line = fitfiles[num].strip().split('K')
-            line = line[0].strip().split("-")
-            arg[num, 1:] = fitRH(fitfiles[num], line[1],low,high)
-            arg[num, 0] = line[1]
-            num = num + 1
-            if num == nums:
-                break
+            nums = len(fitfiles)
+            num = 0
+            arg = np.zeros([nums, 4])
+            range = input("请输入RH线性拟合范围，示例：4-9，回车默认0-14\n")
+            if nums==0:
+                print('没有需要的hall文件')
+            else:
+                if range == "":
+                    low = 0
+                    high = 14
+                else:
+                    range = range.strip().split('-')
+                    low = float(range[0])
+                    high = float(range[1])
+                while True:
+                    line = fitfiles[num].strip().split('K')
+                    line = line[0].strip().split("-")
+                    arg[num, 1:] = fitRH(fitfiles[num], line[1],low,high)
+                    arg[num, 0] = line[1]
+                    num = num + 1
+                    if num == nums:
+                        break
 
 
 def filetonumpy(file):
@@ -190,31 +196,35 @@ def fitprocess():
     """拟合主流程"""
     fitfiles = [entry.path for entry in os.scandir(workdirdata) if "1,1,1" in entry.name]
     if fitfiles != []:
-        print("警告：由于dealed-hall-1,1,1.dat存在，认为没有进行ohm至ohm cm的计算，不推荐进行拟合计算")
+        print("\n警告：由于dealed-hall-1,1,1.dat存在，认为没有进行ohm至ohm cm的计算，不推荐进行拟合计算\n")
     fitornot = input("是否进行双带线性拟合（y/n），回车默认不拟合，拟合会产生每个温度的拟合图像\n")
     if fitornot == "y":
         fitfile = open(workdirfit+"twobandfit.dat", "w+")
         fitfile.write("Temp(K),ne,nh,miue,miuh\n")
         fitfile.close()
-        fitfiles = [entry.path for entry in os.scandir(workdir+"\data") if "K" in entry.name]
-        nums = int(len(fitfiles) / 2)
-        num = 0
-        arg = np.zeros([nums, 5])
-        oneormore = ""#input("一个温度一个拟合图/所有温度合到一个图（y/n),回车默认为y\n")
-        try:
-            while True:
-                line = fitfiles[num].strip().split('K')
-                line = line[0].strip().split("-")
-                if oneormore == "y" or oneormore == "":
-                    arg[num, 1:] = fit(fitfiles[num + nums], fitfiles[num], line[1])
-                else:
-                    arg[num, 1:] = fitonefig(fitfiles[num + nums], fitfiles[num], line[1])
-                if num == nums:
-                    break
-        except Exception as error:
-            print(error)
-        plt.tight_layout()
-        plt.show()
+        Rfitfiles = [entry.path for entry in os.scandir(workdir+"\data") if "K" in entry.name and "R" in entry.name]
+        hallfitfiles=[entry.path for entry in os.scandir(workdir+"\data") if "K" in entry.name and "hall" in entry.name]
+        Rnums = len(Rfitfiles)
+        hallnums= len(hallfitfiles)
+        if Rnums!=hallnums or Rnums==0 or hallnums==0:
+            print("data文件见数据文件不正确，一般是由于只有R或者只有hall")
+        else:
+            num = 0
+            arg = np.zeros([Rnums, 5])
+            oneormore = ""#input("一个温度一个拟合图/所有温度合到一个图（y/n),回车默认为y\n")
+            try:
+                while True:
+                    line = fitfiles[num].strip().split('K')
+                    line = line[0].strip().split("-")
+                    if oneormore == "y" or oneormore == "":
+                        arg[num, 1:] = fit(Rfitfiles[num], hallfitfiles[num], line[1])
+                    else:
+                        arg[num, 1:] = fitonefig(Rfitfiles[num], hallfitfiles[num], line[1])
+                    num=num+1
+                    if num == Rnums:
+                        break
+            except Exception as error:
+                print(error)
 
 
 def halltest(name):
@@ -428,14 +438,14 @@ def dealdata(name, range, lie, interval, plot, type):
 def deal(file, range, interval, abc):
     """处理数据的多个温度文件的储存"""
     if halltest(file):
-        fig=plt.figure(figsize=(16, 9))
+        fig=plt.figure(figsize=(19.2, 10.8))
         [dataR, headline] = dealdata(file, range, 2, interval, 221,2)
         type="R"
     else:
-        type = input("检测到只有三列数据，请输入R或者H(hall)，回车默认R")
+        type = input("检测到只有三列数据，请输入R或者H(hall)，回车默认R\n")
         if type == "R" or type=="":
             type="R"
-            fig=plt.figure(figsize=(8, 9))
+            fig=plt.figure(figsize=(9.6, 10.8))
             [dataR, headline] = dealdata(file, range, 2, interval, 211,2)
     if type=="R":
         dataR = dataR.T[~(dataR == 0).all(0)].T  # 去除0列
@@ -460,7 +470,7 @@ def deal(file, range, interval, abc):
     # hall处理
     if halltest(file) or type=="H":
         if type=="H":
-            fig=plt.figure(figsize=(8, 9))
+            fig=plt.figure(figsize=(9.6, 10.8))
             [datahall, headline] = dealdata(file, range, 2, interval, 211, 3)
         else:
             [datahall, headline] = dealdata(file, range, 3, interval, 222,3)
@@ -502,7 +512,7 @@ if run==1:
         print("dat文件过多")
     else:
         print("文件名是" + datafile[0])
-        range = input("输入内插范围（整数）,最大值即可,回车则默认为14\n")
+        range = input("输入内插范围（一位小数）,最大值即可,回车则默认为14\n")
         if range == "":
             range = 14
         else:
@@ -525,10 +535,18 @@ if run==1:
             deal(datafile[0], range, interval, abc)
         except Exception as error:
             print(error)
+
 if os.path.exists(workdirfit):
-    input("已有fit文件夹，如需分析请删除fit文件夹重新运行程序。")
+    datafile = [entry.path for entry in os.scandir(workdirfit) if entry.name.endswith(".dat")]
+    if datafile!=[]:
+        input("fit文件夹已有数据，如需分析请删除fit文件夹重新运行程序。")
+        run=0
+    else:
+        run=1
 else:
     os.makedirs(workdir + "/fit", 777)
+    run=1
+if run==1:
     try:
         fitprocess()
         fitRHprocess()
