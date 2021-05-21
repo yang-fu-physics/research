@@ -15,6 +15,20 @@ me = 9.10938356 * 10 ** -30
 workdir = os.getcwd()
 workdirdata=workdir+"/data/"
 workdirfit=workdir+"/fit/"
+def relist(file):
+    """对文件重新排序，使得（2）在无（2）后面"""
+    list=[]
+    for i in file:
+        i = i[:-4]
+        list.append(i)
+    list.sort()
+    newlist=[]
+    for i in list:
+        i = i+".dat"
+        newlist.append(i)
+    print(newlist)
+    return newlist
+
 def rename(newfile):
     i = 2
     last=newfile.strip().split('.')[-1]
@@ -70,7 +84,7 @@ def fitRHprocess():
         fitfile = open(workdirfit+"fitRH.dat", "w+")
         fitfile.write("Temp(K),RH(cm^3/C),intercept(ohm cm),Correlation coefficient\n")
         fitfile.close()
-        fitfiles = [entry.path for entry in os.scandir(workdir+"/data") if "K" in entry.name and "hall" in entry.name]
+        fitfiles =relist([entry.path for entry in os.scandir(workdir+"/data") if "K" in entry.name and "hall" in entry.name])
         if fitfiles==[]:
             print('没有hall文件')
         else:
@@ -96,7 +110,6 @@ def fitRHprocess():
                     num = num + 1
                     if num == nums:
                         break
-
 
 def filetonumpy(file):
     """将带有抬头的文件处理为数据矩阵"""
@@ -199,8 +212,8 @@ def fitprocess():
         fitfile = open(workdirfit+"twobandfit.dat", "w+")
         fitfile.write("Temp(K),ne,nh,miue,miuh\n")
         fitfile.close()
-        Rfitfiles = [entry.path for entry in os.scandir(workdir+"\data") if "K" in entry.name and "R" in entry.name]
-        hallfitfiles=[entry.path for entry in os.scandir(workdir+"\data") if "K" in entry.name and "hall" in entry.name]
+        Rfitfiles = relist([entry.path for entry in os.scandir(workdir+"\data") if "K" in entry.name and "R" in entry.name])
+        hallfitfiles=relist([entry.path for entry in os.scandir(workdir+"\data") if "K" in entry.name and "hall" in entry.name])
         Rnums = len(Rfitfiles)
         hallnums= len(hallfitfiles)
         if Rnums!=hallnums or Rnums==0 or hallnums==0:
@@ -211,7 +224,7 @@ def fitprocess():
             oneormore = ""#input("一个温度一个拟合图/所有温度合到一个图（y/n),回车默认为y\n")
             try:
                 while True:
-                    line = fitfiles[num].strip().split('K')
+                    line = Rfitfiles[num].strip().split('K')
                     line = line[0].strip().split("-")
                     if oneormore == "y" or oneormore == "":
                         arg[num, 1:] = fit(Rfitfiles[num], hallfitfiles[num], line[1])
@@ -222,7 +235,6 @@ def fitprocess():
                         break
             except Exception as error:
                 print(error)
-
 
 def halltest(name):
     """通过判断初始数据列数，确认有几行数据，3列返回True"""
@@ -277,7 +289,6 @@ def savesinglefile(headlines, data, type, abc):
         if k==len(headlines)-1:
             break
         k=k+1
-
 def Rtorho(data, abc):
     """电阻到电阻率"""
     abc = abc.replace("，", ",")
