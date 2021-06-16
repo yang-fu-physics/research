@@ -3,6 +3,7 @@ import numpy as np
 
 
 def rewrite(k, m):
+    """rewrite config.in. k was the cycle number, m is one-dimensional array of fermi energy """
     newline = []
     config = open("../config.in", "r+")
     i = 0
@@ -24,6 +25,7 @@ def rewrite(k, m):
 
 
 def run(k, m):
+    """Call the skeaf.sh to run the skeaf code and rename output file. k was the cycle number, m is one-dimensional array of fermi energy """
     cmd = "./skeaf.sh"
     # os.system(cmd)
     data = os.popen(cmd)
@@ -32,9 +34,9 @@ def run(k, m):
     os.rename('results_short.out', newname)
 
 
-a = 6.630901
-b = 6.630900
-c = 0.000001
+a = input("input max energy\n")
+b = input("input min energy\n")
+c = input("input interval\n")
 d = int((a - b) / c + 1)
 m = np.linspace(a, b, d)
 print(m.size)

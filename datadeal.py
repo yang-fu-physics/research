@@ -282,9 +282,9 @@ def savesinglefile(headlines, data, type, abc):
                     headline = "Field(T),Rxx(ohm)"
             else:
                 if type=="hall":
-                    headline = "Field(T),rhoyx(ohm)"
-                else:
                     headline = "Field(T),rhoyx(ohm cm)"
+                else:
+                    headline = "Field(T),rhoxx(ohm cm)"
             addheadline(headline, "tmp.dat", workdirdata+type + "-" + name[0] + ".dat")
         if k==len(headlines)-1:
             break
