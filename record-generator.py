@@ -96,8 +96,8 @@ while True:
         set3(time_str[0:4] + "年" + time_str[5:7] + "月" + time_str[8:10] + "日",doc)
     elif time_str[8:10] != time_str_old[8:10]:
         set3(time_str[0:4] + "年" + time_str[5:7] + "月" + time_str[8:10]+"日",doc)
-    settext(time_str+str,doc)
-    record.write(time_str+str+"\n")
+    settext(time_str+" "+str,doc)
+    record.write(time_str+" "+str+"\n")
     log.write("\n"+time_str)
     log.close()
     record.close()
