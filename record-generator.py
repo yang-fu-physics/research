@@ -36,7 +36,7 @@ def settext(str,doc):
     r=p.add_run(str)
     r.font.name='宋体'    #设置为宋体
     r._element.rPr.rFonts.set(qn('w:eastAsia'), '宋体')#设置为宋体，和上边的一起使用
-    r.font.size=Pt(13)  #设置字体大小为12磅 相当于 小四
+    r.font.size=Pt(13)  #设置字体大小为13磅 相当于 四
     r.font.color.rgb=RGBColor(0,0,0)#设置颜色为黑色
 
 #设置2级标题
@@ -67,27 +67,27 @@ def set3(str,doc):
     run=para_heading.add_run(str)
     run.font.name='宋体'    #设置为宋体
     run._element.rPr.rFonts.set(qn('w:eastAsia'), '宋体')#设置为宋体，和上边的一起使用
-    run.font.size=Pt(14)#设置1级标题文字的大小为“小四” 为12磅
+    run.font.size=Pt(14)#设置1级标题文字的大小为“小四” 为14磅
     run.font.color.rgb=RGBColor(0,0,0)#设置颜色为黑色
 
 while True:
     str = input("\n日志信息\n")
-    try:
+    try:#尝试打开日志文档，否则不打开。
         doc=Document("record.docx")
     except Exception as m:
         pass
         doc=Document()
     time_str = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time()))
     time_str_old = ""
-    record=open("record.txt","a+")
-    log=open("log.txt","r+")
+    record=open("record.txt","a+")#简单记录文本
+    log=open("log.txt","r+")#用于记录记录时间
     logtext = log.readlines()
     try:
         time_str_old = logtext[-1]
     except Exception as m:
         print("warning:没有log文件或文件为空")
         time_str_old = "1995-09-15"
-    if time_str[0:4]!=time_str_old[0:4]:
+    if time_str[0:4]!=time_str_old[0:4]:#年数不同则重建三个标题
         set1(time_str[0:4]+"年",doc)
         set2(time_str[0:4] + "年" + time_str[5:7] + "月",doc)
         set3(time_str[0:4] + "年" + time_str[5:7] + "月" + time_str[8:10] + "日",doc)
