@@ -36,7 +36,7 @@ def settext(str,doc):
     r=p.add_run(str)
     r.font.name='宋体'    #设置为宋体
     r._element.rPr.rFonts.set(qn('w:eastAsia'), '宋体')#设置为宋体，和上边的一起使用
-    r.font.size=Pt(13)  #设置字体大小为13磅 相当于 四
+    r.font.size=Pt(12)  #设置字体大小为13磅 相当于 四
     r.font.color.rgb=RGBColor(0,0,0)#设置颜色为黑色
 
 #设置2级标题
