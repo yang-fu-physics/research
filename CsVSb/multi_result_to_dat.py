@@ -2,6 +2,15 @@ import os
 import numpy as np
 workdir = os.getcwd()
 RytoeV = 13.605662285137
+def relist(file):
+    """对文件重新排序，使得（2）在无（2）后面"""
+    list=[]
+    for i in file:
+        i = i
+        list.append(i)
+    list.sort()
+    newlist=list
+    return newlist
 def rename(newfile):
     i = 2
     last=newfile.strip().split('.')[-1]
@@ -30,8 +39,7 @@ def addheadline(headline, oldfile, newfile):
         fpw.close()
     os.remove(oldfile)
     return(newfile)
-files=[entry.path for entry in os.scandir(workdir) if entry.name.startswith("results")]
-print(files)
+files=relist([entry.path for entry in os.scandir(workdir) if entry.name.startswith("results")])
 data = []
 headline = ["",""]
 data=np.zeros([1000,6])
@@ -65,7 +73,8 @@ newfile=addheadline(headline,"tmp.dat",name+".dat")
 with open(newfile, "r+")as fp:
     b = open("tmp.dat", "w+")
     for line in fp:
-        line = line.replace("0.0000", "")
+        line = line.replace("0.0000,0.0000,0.0000,0.0000,0.0000,0.0000", ",,,,,")
+        line = line.replace("0.0000,0.0000,0.0000,0.0000", ",,,")
         b.write(line)
     b.close()
 with open("tmp.dat", "r+") as fp:
