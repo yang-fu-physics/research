@@ -274,7 +274,8 @@ def savesinglefile(headlines, data, type, abc):
     while True:
         if headlines[k] != "Field(T)":
             name = headlines[k].strip().split('(')
-            np.savetxt("tmp.dat", data[:, [0, k]], fmt="%.8e", delimiter=",")
+            MR=(data[:,k]-data[0,k])/data[0,k]
+            np.savetxt("tmp.dat", np.c(data[:, [0, k]],MR.T), fmt="%.8e", delimiter=",")
             if abc == "1,1,1":
                 if type=="hall":
                     headline = "Field(T),Ryx(ohm)"
@@ -285,6 +286,7 @@ def savesinglefile(headlines, data, type, abc):
                     headline = "Field(T),rhoyx(ohm cm)"
                 else:
                     headline = "Field(T),rhoxx(ohm cm)"
+            headline=headline+",MR"
             addheadline(headline, "tmp.dat", workdirdata+type + "-" + name[0] + ".dat")
         if k==len(headlines)-1:
             break
@@ -353,8 +355,8 @@ def spit(dataT, range, lie, interval):
         row = row + 1
     j = Fchange
 
-    a1 = dataT[:j, :]
-    a2 = dataT[j:, :]
+    a1 = dataT[:j+1, :]
+    a2 = dataT[j-1:, :]
     # print(a1,a2)
     av = (inter(a1, range, lie, interval) + inter(a2, range, lie, interval)) / 2
     return av
