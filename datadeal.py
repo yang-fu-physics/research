@@ -274,19 +274,22 @@ def savesinglefile(headlines, data, type, abc):
     while True:
         if headlines[k] != "Field(T)":
             name = headlines[k].strip().split('(')
-            MR=(data[:,k]-data[0,k])/data[0,k]
-            np.savetxt("tmp.dat", np.c(data[:, [0, k]],MR.T), fmt="%.8e", delimiter=",")
+            if type=="hall":
+                np.savetxt("tmp.dat", data[:, [0, k]], fmt="%.8e", delimiter=",")
+            else:
+                MR=(data[:,k]-data[0,k])/data[0,k]
+                np.savetxt("tmp.dat", np.c_(data[:, [0, k]],MR.T), fmt="%.8e", delimiter=",")
             if abc == "1,1,1":
                 if type=="hall":
                     headline = "Field(T),Ryx(ohm)"
                 else:
-                    headline = "Field(T),Rxx(ohm)"
+                    headline = "Field(T),Rxx(ohm)"+",MR"
             else:
                 if type=="hall":
                     headline = "Field(T),rhoyx(ohm cm)"
                 else:
-                    headline = "Field(T),rhoxx(ohm cm)"
-            headline=headline+",MR"
+                    headline = "Field(T),rhoxx(ohm cm)"+",MR"
+            headline=headline
             addheadline(headline, "tmp.dat", workdirdata+type + "-" + name[0] + ".dat")
         if k==len(headlines)-1:
             break
@@ -326,7 +329,7 @@ def Ryxtorhoyx(data, abc):
 def inter(m, range, lie, interval):
     """根据输入的m数据，range范围，lie霍尔或者电阻的列数用于判读是内插的y的正负，interval内插间隔"""
     a = 1
-    if m[0, 1] < 0:
+    if m[1, 1] < 0:#取第一行第一列判断是否为负值，因为为了0T的内插相同，多取了一行。
         a = -1
     u, indices = np.unique(m[:, 1], return_index=True)
     fx = interpolate.interp1d(m[indices, 1] / 10000, m[indices, 2], kind="linear",
@@ -339,9 +342,9 @@ def inter(m, range, lie, interval):
         intery[:, 1] = a * fx(x)
     else:
         intery[:, 1] = fx(x)
-    # plt.plot(m[:,1],m[:,2],intery[:,0],intery[:,1])
-    # plt.show()
-    # print(intery)
+    #plt.plot(m[:,1],m[:,2],intery[:,0],intery[:,1])
+    #plt.show()
+    #print(intery)
     return intery
 def spit(dataT, range, lie, interval):
     """将单个温度的数据进行正负场的分离，并使用inter函数，并做平均"""
@@ -355,9 +358,9 @@ def spit(dataT, range, lie, interval):
         row = row + 1
     j = Fchange
 
-    a1 = dataT[:j+1, :]
-    a2 = dataT[j-1:, :]
-    # print(a1,a2)
+    a1 = dataT[:j, :]
+    a2 = dataT[j:, :]
+    #print(a1,a2)
     av = (inter(a1, range, lie, interval) + inter(a2, range, lie, interval)) / 2
     return av
 def dealdata(name, range, lie, interval, plot, type):
