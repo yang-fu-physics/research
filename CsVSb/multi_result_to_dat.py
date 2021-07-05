@@ -61,8 +61,8 @@ for n in subdir:
         j = 0
         for i in contect:
             if i[1:5] == "Freq":
-                data[k * 40 + j, 8 * m + 2] = i[11:17]  # 频率，质量，电子还是空穴
-                data[k * 40 + j, 8 * m + 3] = i[40:46]
+                data[k * 40 + j, 8 * m + 2] = i[9:17]  # 频率，质量，电子还是空穴
+                data[k * 40 + j, 8 * m + 3] = i[38:46]
                 data[k * 40 + j, 8 * m + 4] = i[125:127]
             if i[1:5] == "Orbi":
                 data[k * 40 + j, 8 * m + 5] = i[47:53]  # 坐标
