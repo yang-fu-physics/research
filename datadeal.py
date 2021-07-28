@@ -278,7 +278,7 @@ def savesinglefile(headlines, data, type, abc):
                 np.savetxt("tmp.dat", data[:, [0, k]], fmt="%.8e", delimiter=",")
             else:
                 MR=(data[:,k]-data[0,k])/data[0,k]
-                np.savetxt("tmp.dat", np.c_(data[:, [0, k]],MR.T), fmt="%.8e", delimiter=",")
+                np.savetxt("tmp.dat", np.c_[data[:, [0, k]],MR.T], fmt="%.8e", delimiter=",")
             if abc == "1,1,1":
                 if type=="hall":
                     headline = "Field(T),Ryx(ohm)"
@@ -544,10 +544,7 @@ if run==1:
         input("确认参数")
         abc = abc.replace("，", ",")
         #deal(datafile[0], range, interval, abc)
-        try:
-            deal(datafile[0], range, interval, abc)
-        except Exception as error:
-            print(error)
+        deal(datafile[0], range, interval, abc)
 
 if os.path.exists(workdirfit):
     datafile = [entry.path for entry in os.scandir(workdirfit) if entry.name.endswith(".dat")]

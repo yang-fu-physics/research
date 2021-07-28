@@ -1,14 +1,12 @@
 import math
-
 import numpy as np
-
+eVtoRy = 0.073498688455102
+RytoeV = 13.605662285137
 pi = 3.141592654
 A = 10475.764126557
 h = 6.62607004 * 10 ** -34
 e = 1.60217733 * 10 ** -19
 me = 9.10938356 * 10 ** -30
-
-
 def caltan(r,num):
     r=r*2*pi*2
     print(r)
@@ -57,7 +55,8 @@ def runc(a):
     """反解界面大小，或对应的倒空间长度"""
     b = math.sqrt(a / (A * pi))
     print(a / A)
-    print(b / (2 * pi) * 2)
+    print(b)#半径乘过2pi
+    print(b / (2 * pi) * 2)#直径未乘2pi
 
 
 def area(a):
@@ -86,4 +85,9 @@ print(vf(0.00258, 0.13003), vf(0.00697, 0.12829), vf(0.06940, 0.54010), vf(0.075
 
 
 print((0.45 / 0.51 * 0.85440055) ** 2 * pi * A)
-
+print("------")
+print(runc(13000))
+print(0.0038*RytoeV)
+print(0.2*eVtoRy)
+print(0.0147*RytoeV)
+print(0.1884*0.1884*pi*A)

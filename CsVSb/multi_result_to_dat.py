@@ -1,9 +1,10 @@
+subdir=["291","293","295","297"]#subfolder for results
 import os
 import numpy as np
 workdir = os.getcwd()
 RytoeV = 13.605662285137
-subdir=["291","293","295","297"]
 def replace0(a):
+    """Delete the 0 in the file"""
     m = a.strip().split(",")
     newstr=""
     for i in m:
@@ -13,7 +14,7 @@ def replace0(a):
     newstr=newstr[:-1]+"\n"
     return newstr
 def relist(file):
-    """对文件重新排序，使得（2）在无（2）后面"""
+    """Reorder the file so that file with a serial number follows file without serial number"""
     list=[]
     for i in file:
         i = i
@@ -22,12 +23,13 @@ def relist(file):
     newlist=list
     return newlist
 def rename(newfile):
+    #if file exited, then rename newfile which is old file name add serial number.
     i = 2
     last=newfile.strip().split('.')[-1]
     newfile = newfile[:-1*len(last)-1]
     while True:
         try:
-            fpw = open(newfile+"."+last, "r")  # 如果不存在会报错
+            fpw = open(newfile+"."+last, "r")
             fpw.close
             if i == 2:
                 newfile = newfile + "(%i)" % i
@@ -39,10 +41,10 @@ def rename(newfile):
     newfile=newfile+"."+last
     return newfile
 def addheadline(headline, oldfile, newfile):
-    """在新文件中加入抬头，删除旧文件"""
+    """Add a header to the new file and delete the old file"""
     with open(oldfile, "r+")as fp:
-        tmp_data = fp.read()  # 读取所有文件, 文件太大时不用使用此方法
-        fp.seek(0)  # 移动游标
+        tmp_data = fp.read()
+        fp.seek(0)  # Move the cursor
         newfile=rename(newfile)
         fpw=open(newfile,"w+")
         fpw.write(headline + "\n" + tmp_data)
@@ -50,11 +52,6 @@ def addheadline(headline, oldfile, newfile):
     os.remove(oldfile)
     return(newfile)
 
-"""
-数据结构：
-第一行是数据的名称
-对于只有两列的数据行则是能量，第一行是Ry，第二行是eV
-"""
 m=0
 headline=""
 data=np.zeros([10000,200])
@@ -70,16 +67,16 @@ for n in subdir:
         j = 0
         for i in contect:
             if i[1:5] == "Freq":
-                data[k * 40 + j, 8 * m + 2] = i[9:17]  # 频率，质量，电子还是空穴
+                data[k * 40 + j, 8 * m + 2] = i[9:17]  # Frequency, mass, electron or hole
                 data[k * 40 + j, 8 * m + 3] = i[38:46]
                 data[k * 40 + j, 8 * m + 4] = i[125:127]
             if i[1:5] == "Orbi":
-                data[k * 40 + j, 8 * m + 5] = i[47:53]  # 坐标
+                data[k * 40 + j, 8 * m + 5] = i[47:53]  # coordinate
                 data[k * 40 + j, 8 * m + 6] = i[67:73]
                 data[k * 40 + j, 8 * m + 7] = i[87:93]
                 j = j + 1
             if i[1:5] == "Ferm":
-                data[k * 40 + j, 8 * m + 0] = float(i[19:27])
+                data[k * 40 + j, 8 * m + 0] = float(i[19:27])  #fermi energy
                 data[k * 40 + j, 8 * m + 1] = float(i[19:27]) * RytoeV
                 j = j + 1
             if i[1:5] == "XCry":
@@ -88,15 +85,13 @@ for n in subdir:
         k = k + 1
     m=m+1
     headline = headline+n+"Fermi(Ry),Fermi(eV),Freq(kT),m*(me),e/h,x-coord,y-coord,z-coord,"
-data = data[~(data == 0).all(1)]
-data = data.T[~(data == 0).all(0)].T  # 去除0列
+data = data[~(data == 0).all(1)]  #Get rid of all 0 rows
+data = data.T[~(data == 0).all(0)].T  # Get rid of all 0 columns
 np.savetxt("tmp.dat", data, fmt="%.4f", delimiter=",")
 newfile = addheadline(headline, "tmp.dat", name + ".dat")
 with open(newfile, "r+")as fp:
     b = open("tmp.dat", "w+")
     for line in fp:
-        #line = line.replace("0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000", ",,,,,,,")
-        #line = line.replace("0.0000,0.0000,0.0000,0.0000,0.0000,0.0000", ",,,,,")
         line = replace0(line)
         b.write(line)
     b.close()
