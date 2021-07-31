@@ -1,12 +1,17 @@
-filenames=["Cs.bxsf.band-72-r","Cs.bxsf.band-73-r","Cs.bxsf.band-74-r","Cs.bxsf.band-75-r"]#bxsf files
-subdir=["72","73","74","75"]#subfolder for results
-a =0.490288#max fermi
-b =0.494288#min fermi
-c =0.000200#interval
+fermienergy=0.505201
+a =fermienergy+0.00735#max fermi
+b =fermienergy-0.00735#min fermi
+c =0.000350#interval
 import os
 import numpy as np
 import shutil
-
+workdir=os.getcwd()
+filenames = [entry.path for entry in os.scandir(workdir) if entry.name.endswith(".bxsf")]
+filenames.sort()
+subdir=[]
+for i in filenames:
+    print(i[-8:-5])
+    subdir.append(i[-8:-5])#subfolder for results
 def rewritefilename(name):
     """rewrite config.in to change the bxsf file in config.in """
     newline = []
@@ -41,7 +46,7 @@ def rewrite(k, m):
             break
         if i == 1:
             predata = line[4:12]
-            line = line.replace(predata, str(round(m[k], 6)))
+            line = line.replace(predata, "%.6f"%round(m[k], 6))
             print(str(round(m[k], 6)))
         newline.append(line)
         i = i + 1
@@ -58,7 +63,7 @@ def run(k, m, n,workdir):
     # os.system(cmd)
     data = os.popen(cmd)
     print(data.read())
-    newname = 'results_short ' + str(round(m[k], 6))
+    newname = 'results_short ' + "%.6f"%round(m[k], 6)
     print(newname)
     print(n+newname)
     os.rename('results_short.out', newname)

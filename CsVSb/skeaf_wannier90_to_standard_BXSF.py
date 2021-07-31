@@ -4,8 +4,7 @@ Atobohr = A / bohr
 eVtoRy = 0.073498688455102
 RytoeV = 13.605662285137
 pi = 3.141592654
-
-
+import os
 def changel(filename, newfile):
     file = open(filename)
     new = open(newfile, "w")
@@ -49,7 +48,11 @@ def changel(filename, newfile):
             line = newdata
         new.write(line)
         i = i + 1
-
-name = input("input bxsf calculated by wannier90\n")
-name2 = name + "-r"
-changel(name, name2)
+workdir = os.getcwd()
+datafile = [entry.path for entry in os.scandir(workdir) if not entry.name.endswith("skeaf_wannier90_to_standard_BXSF.py") and not entry.name.endswith(".py.bxsf")]
+print(datafile)
+datafile.sort()
+print(datafile)
+for i in datafile:
+    name2 = i[-3:]+".bxsf"
+    changel(i, name2)
