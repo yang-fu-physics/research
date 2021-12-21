@@ -358,8 +358,8 @@ def spit(dataT, range, lie, interval):
         row = row + 1
     j = Fchange
 
-    a1 = dataT[:j, :]
-    a2 = dataT[j:, :]
+    a1 = dataT[:j+1, :]
+    a2 = dataT[j-1:, :]
     #print(a1,a2)
     av = (inter(a1, range, lie, interval) + inter(a2, range, lie, interval)) / 2
     return av

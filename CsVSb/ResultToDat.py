@@ -1,4 +1,4 @@
-subdir=["291","293","295","297"]#subfolder for results
+subdir=["577","578","579","580","581","582","583","584","585","586","587","588","589","590","591","592","593","594","595","596","597","598","599","600","601","602"]#subfolder for results
 import os
 import numpy as np
 workdir = os.getcwd()
@@ -54,9 +54,10 @@ def addheadline(headline, oldfile, newfile):
 
 m=0
 headline=""
-data=np.zeros([10000,200])
+data=np.zeros([50000,1000])
 for n in subdir:
     subworkdir=workdir+"/"+n
+    num=400
     print(m)
     files = relist([entry.path for entry in os.scandir(subworkdir) if entry.name.startswith("results")])
     k = 0
@@ -67,28 +68,31 @@ for n in subdir:
         j = 0
         for i in contect:
             if i[1:5] == "Freq":
-                data[k * 40 + j, 8 * m + 2] = i[9:17]  # Frequency, mass, electron or hole
-                data[k * 40 + j, 8 * m + 3] = i[38:46]
-                data[k * 40 + j, 8 * m + 4] = i[125:127]
+                data[k * num + j, 8 * m + 2] = i[9:17]  # Frequency, mass, electron or hole
+                data[k * num + j, 8 * m + 3] = i[38:46]
+                data[k * num + j, 8 * m + 4] = i[125:127]
             if i[1:5] == "Orbi":
-                data[k * 40 + j, 8 * m + 5] = i[47:53]  # coordinate
-                data[k * 40 + j, 8 * m + 6] = i[67:73]
-                data[k * 40 + j, 8 * m + 7] = i[87:93]
+                data[k * num + j, 8 * m + 5] = i[47:53]  # coordinate
+                data[k * num + j, 8 * m + 6] = i[67:73]
+                data[k * num + j, 8 * m + 7] = i[87:93]
                 j = j + 1
             if i[1:5] == "Ferm":
-                data[k * 40 + j, 8 * m + 0] = float(i[19:27])  #fermi energy
-                data[k * 40 + j, 8 * m + 1] = float(i[19:27]) * RytoeV
+                data[k * num + j, 8 * m + 0] = float(i[19:27])  #fermi energy
+                data[k * num + j, 8 * m + 1] = float(i[19:27]) * RytoeV
                 j = j + 1
             if i[1:5] == "XCry":
                 name = i[23:].strip().split()[0]
+
         a.close()
+        if j > num:
+            print("error")
         k = k + 1
     m=m+1
     headline = headline+n+"Fermi(Ry),Fermi(eV),Freq(kT),m*(me),e/h,x-coord,y-coord,z-coord,"
 data = data[~(data == 0).all(1)]  #Get rid of all 0 rows
 data = data.T[~(data == 0).all(0)].T  # Get rid of all 0 columns
 np.savetxt("tmp.dat", data, fmt="%.4f", delimiter=",")
-newfile = addheadline(headline, "tmp.dat", name + ".dat")
+newfile = addheadline(headline, "tmp.dat", "result.dat")
 with open(newfile, "r+")as fp:
     b = open("tmp.dat", "w+")
     for line in fp:

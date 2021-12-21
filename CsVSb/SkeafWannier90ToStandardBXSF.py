@@ -49,7 +49,7 @@ def changel(filename, newfile):
         new.write(line)
         i = i + 1
 workdir = os.getcwd()
-datafile = [entry.path for entry in os.scandir(workdir) if not entry.name.endswith("skeaf_wannier90_to_standard_BXSF.py") and not entry.name.endswith(".py.bxsf")]
+datafile = [entry.path for entry in os.scandir(workdir) if not entry.name.endswith("SkeafWannier90ToStandardBXSF.py") and not entry.name.endswith(".py.bxsf")]
 print(datafile)
 datafile.sort()
 print(datafile)
