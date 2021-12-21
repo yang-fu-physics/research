@@ -271,6 +271,8 @@ def savesinglefile(headlines, data, type, abc):
     """将处理后的每个温度的数据储存在单个文件"""
     headlines = headlines.strip().split(',')
     k=0
+    if type=="R":
+        MRall=np.zeros([np.size((data))[0],len(headlines)])
     while True:
         if headlines[k] != "Field(T)":
             name = headlines[k].strip().split('(')
@@ -279,6 +281,7 @@ def savesinglefile(headlines, data, type, abc):
             else:
                 MR=(data[:,k]-data[0,k])/data[0,k]
                 np.savetxt("tmp.dat", np.c_[data[:, [0, k]],MR.T], fmt="%.8e", delimiter=",")
+                MRall[:,k]=MR.T
             if abc == "1,1,1":
                 if type=="hall":
                     headline = "Field(T),Ryx(ohm)"
@@ -291,9 +294,14 @@ def savesinglefile(headlines, data, type, abc):
                     headline = "Field(T),rhoxx(ohm cm)"+",MR"
             headline=headline
             addheadline(headline, "tmp.dat", workdirdata+type + "-" + name[0] + ".dat")
+        else:
+            MRall[:,0]=data[:,0]
         if k==len(headlines)-1:
             break
         k=k+1
+    if type=="R":
+        np.savetxt("tmp.dat", MRall, fmt="%.8e", delimiter=",")
+        addheadline(headlines, "tmp.dat", workdirdata+"MRall.dat")
 def Rtorho(data, abc):
     """电阻到电阻率"""
     abc = abc.replace("，", ",")
