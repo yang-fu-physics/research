@@ -269,10 +269,11 @@ def addheadline(headline, oldfile, newfile):
     os.remove(oldfile)
 def savesinglefile(headlines, data, type, abc):
     """将处理后的每个温度的数据储存在单个文件"""
+    headlinestr=headlines
     headlines = headlines.strip().split(',')
     k=0
     if type=="R":
-        MRall=np.zeros([np.size((data))[0],len(headlines)])
+        MRall=np.zeros([data.shape[0],len(headlines)])
     while True:
         if headlines[k] != "Field(T)":
             name = headlines[k].strip().split('(')
@@ -292,16 +293,18 @@ def savesinglefile(headlines, data, type, abc):
                     headline = "Field(T),rhoyx(ohm cm)"
                 else:
                     headline = "Field(T),rhoxx(ohm cm)"+",MR"
-            headline=headline
             addheadline(headline, "tmp.dat", workdirdata+type + "-" + name[0] + ".dat")
         else:
-            MRall[:,0]=data[:,0]
+            if type=="hall":
+                pass
+            else:
+                MRall[:,0]=data[:,0]
         if k==len(headlines)-1:
             break
         k=k+1
     if type=="R":
         np.savetxt("tmp.dat", MRall, fmt="%.8e", delimiter=",")
-        addheadline(headlines, "tmp.dat", workdirdata+"MRall.dat")
+        addheadline(headlinestr, "tmp.dat", workdirdata+"MRall.dat")
 def Rtorho(data, abc):
     """电阻到电阻率"""
     abc = abc.replace("，", ",")
