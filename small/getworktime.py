@@ -10,7 +10,7 @@ class Stats:
         # 从 UI 定义中动态 创建一个相应的窗口对象
         # 注意：里面的控件对象也成为窗口对象的属性了
         # 比如 self.ui.button , self.ui.textEdit
-        self.ui = QUiLoader().load('11.ui')
+        self.ui = QUiLoader().load('C:\\Users\\Admin\\PycharmProjects\\111\\small\\11.ui')
         self.starttime=0
         self.stoptime=0
         self.time = 0
@@ -52,7 +52,7 @@ def b():
             newtime=time.time()
             stats.time=time.time()-stats.starttime+stats.time
             stats.starttime=newtime
-            stats.ui.bar.setValue(int(stats.time / (8)))
+            stats.ui.bar.setValue(int(stats.time / (8*36)))
         else:
             time.sleep(1)
             #print(stats.Staus)
@@ -61,4 +61,4 @@ b=threading.Thread(target=b)
 b.start()
 app.exec_()
 a=False
-
+time.sleep(60)
