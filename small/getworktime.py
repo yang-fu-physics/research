@@ -1,5 +1,6 @@
 from PySide2.QtWidgets import QApplication, QMessageBox
 from PySide2.QtUiTools import QUiLoader
+from PySide2.QtGui import QTextCursor
 import time
 import threading
 class Stats:
@@ -29,6 +30,7 @@ class Stats:
             self.time=0
             self.localtime = time.localtime(time.time())
             self.newday=True
+        self.ui.ing.setText(" work")
     def getstoptime(self):
         #self.ui.text.reload()
         self.Staus=False
@@ -37,7 +39,10 @@ class Stats:
             self.time // 3600, self.time % 3600 // 60, self.time % 3600 % 60))
         with open("work.txt") as f:
             self.ui.text.setPlainText(f.read())
-
+        self.ui.ing.setText("break")
+        self.ui.text.moveCursor(QTextCursor.End)
+        #self.ui.text.centerCursor()
+        #ensureCursorVisible()
 
 
 
@@ -56,7 +61,6 @@ def b():
         else:
             time.sleep(1)
             #print(stats.Staus)
-
 b=threading.Thread(target=b)
 b.start()
 app.exec_()
