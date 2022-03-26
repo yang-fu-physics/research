@@ -52,9 +52,11 @@ def rename(newfile):
     return newfile
 
 
-def fitRH(hallfile, temp, low, high):
+def fitRH(hallfile, Rfile, temp, low, high):
     """对hall数"""
     datahall = filetonumpy(hallfile)
+    dataR=filetonumpy(Rfile)
+    rho0=dataR[0,1]
     # data = np.vstack((datahall,dataR[::-1, :]))
     figRH = plt.figure(figsize=(16, 9))
     plt.plot(datahall[:, 0], datahall[:, 1], "rx", label=temp + "K")
@@ -75,13 +77,15 @@ def fitRH(hallfile, temp, low, high):
         plt.plot(datahall[:, 0], slope * datahall[:, 0] + intercept, "k--", label=temp + "K-fit")
         plt.legend()
         slope = slope * 10000  # 单位转换
-        ne = 1 / slope * Ce
+        n = 1 / slope * Ce
+        miu = slope/rho0
         with open(workdirfit + "fitRH.dat", "a") as fitfile:
             fitstr = temp
             fitstr = fitstr + "," + "%e" % slope
             fitstr = fitstr + "," + "%e" % intercept
             fitstr = fitstr + "," + "%e" % r_value
-            fitstr = fitstr + "," + "%e" % ne
+            fitstr = fitstr + "," + "%e" % n
+            fitstr = fitstr + "," + "%e" % miu
             fitfile.write(fitstr + "\n")
     plt.close()
     figRH.savefig(rename(workdirfit + "RH-" + temp + "K.png"))
@@ -92,10 +96,12 @@ def fitRHprocess():
     fitornot = input("是否进行RH线性拟合（y/n），回车默认不拟合\n")
     if fitornot == "y":
         fitfile = open(workdirfit + "fitRH.dat", "w+")
-        fitfile.write("Temp(K),RH(cm^3/C),intercept(ohm cm),Correlation coefficien,Carrier concentration(cm-3)\n")
+        fitfile.write("Temp(K),RH(cm^3/C),intercept(ohm cm),Correlation coefficien,Carrier concentration(cm^-3),carrier mobility(cm^2/(s*V))\n")
         fitfile.close()
         fitfiles = relist(
             [entry.path for entry in os.scandir(workdir + "/data") if "K" in entry.name and "hall" in entry.name])
+        fitfilesR = relist(
+            [entry.path for entry in os.scandir(workdir + "/data") if "K" in entry.name and "R" in entry.name])
         if fitfiles == []:
             print('没有hall文件')
         else:
@@ -116,7 +122,7 @@ def fitRHprocess():
                 while True:
                     line = fitfiles[num].strip().split('K')
                     line = line[0].strip().split("-")
-                    arg[num, 1:] = fitRH(fitfiles[num], line[1], low, high)
+                    arg[num, 1:] = fitRH(fitfiles[num],fitfilesR[num], line[1], low, high)
                     arg[num, 0] = line[1]
                     num = num + 1
                     if num == nums:
@@ -181,6 +187,10 @@ def fit(Rfile, hallfile, temp):
         plt.legend()
         with open(workdirfit + "twobandfit.dat", "a") as fitfile:
             fitstr = temp
+            p_est[0]=p_est[0]/1000000
+            p_est[1] = p_est[1] / 1000000
+            p_est[2] = p_est[2] * 10000
+            p_est[3] = p_est[3] * 10000
             for i in p_est:
                 fitstr = fitstr + "," + "%e" % i
             fitfile.write(fitstr + "\n")
@@ -230,7 +240,7 @@ def fitprocess():
     fitornot = input("是否进行双带线性拟合（y/n），回车默认不拟合，拟合会产生每个温度的拟合图像\n")
     if fitornot == "y":
         fitfile = open(workdirfit + "twobandfit.dat", "w+")
-        fitfile.write("Temp(K),ne,nh,miue,miuh\n")
+        fitfile.write("Temp(K),ne(cm^-3),nh(cm^-3),miue(cm^2/(s*V)),miuh(cm^2/(s*V))\n")
         fitfile.close()
         Rfitfiles = relist(
             [entry.path for entry in os.scandir(workdir + "\data") if "K" in entry.name and "R" in entry.name])
