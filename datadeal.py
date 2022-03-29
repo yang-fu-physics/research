@@ -306,7 +306,7 @@ def addheadline(headline, oldfile, newfile):
     os.remove(oldfile)
 
 
-def savesinglefile(headlines, data, type, abc):
+def savesinglefile(headlines, data, type, abc, mrhead):
     """将处理后的每个温度的数据储存在单个文件"""
     headlinestr = headlines
     headlines = headlines.strip().split(',')
@@ -319,19 +319,19 @@ def savesinglefile(headlines, data, type, abc):
             if type == "hall":
                 np.savetxt("tmp.dat", data[:, [0, k]], fmt="%.8e", delimiter=",")
             else:
-                MR = (data[:, k] - data[0, k]) / data[0, k]
+                MR = (data[:, k] - data[0, k]) / data[0, k] *100
                 np.savetxt("tmp.dat", np.c_[data[:, [0, k]], MR.T], fmt="%.8e", delimiter=",")
                 MRall[:, k] = MR.T
             if abc == "1,1,1":
                 if type == "hall":
                     headline = "Field(T),Ryx(ohm)"
                 else:
-                    headline = "Field(T),Rxx(ohm)" + ",MR"
+                    headline = "Field(T),Rxx(ohm)" + ",MR(%)"
             else:
                 if type == "hall":
                     headline = "Field(T),rhoyx(ohm cm)"
                 else:
-                    headline = "Field(T),rhoxx(ohm cm)" + ",MR"
+                    headline = "Field(T),rhoxx(ohm cm)" + ",MR(%)"
             addheadline(headline, "tmp.dat", workdirdata + type + "-" + name[0] + ".dat")
         else:
             if type == "hall":
@@ -343,7 +343,7 @@ def savesinglefile(headlines, data, type, abc):
         k = k + 1
     if type == "R":
         np.savetxt("tmp.dat", MRall, fmt="%.8e", delimiter=",")
-        addheadline(headlinestr, "tmp.dat", workdirdata + "MRall.dat")
+        addheadline(mrhead, "tmp.dat", workdirdata + "MRall.dat")
 
 
 def Rtorho(data, abc):
@@ -565,13 +565,15 @@ def deal(file, range, interval, abc):
         dataR = Rtorho(dataR, abc)
         np.savetxt(workdirdata + "dealed-R.dat", dataR, fmt="%.8e", delimiter=",")
         headlinestr = "Field(T)"
+        mrhead ="Field(T)"
         for i in headline:
             if abc == "1,1,1":
                 headlinestr = headlinestr + "," + "%.1f" % i + "K(ohm)"
             else:
                 headlinestr = headlinestr + "," + "%.1f" % i + "K(ohm cm)"
+            mrhead=mrhead+"," + "%.1f" % i + "K(%)"
         addheadline(headlinestr, workdirdata + "dealed-R.dat", workdirdata + "dealed-R-" + abc + ".dat")
-        savesinglefile(headlinestr, dataR, "R", abc)
+        savesinglefile(headlinestr, dataR, "R", abc,mrhead)
         if halltest(file):
             plt.subplot(223)
         else:
@@ -605,7 +607,7 @@ def deal(file, range, interval, abc):
             plot(headline, datahall, "Ryx(ohm)")
         else:
             plot(headline, datahall, "rhoyx(ohm cm)")
-        savesinglefile(headlinestr, datahall, "hall", abc)
+        savesinglefile(headlinestr, datahall, "hall", abc,mrhead)
     plt.tight_layout()
     plt.show()
     fig.savefig("alldata.png")
