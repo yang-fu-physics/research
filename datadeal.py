@@ -32,6 +32,17 @@ def relist(file):
     #print(newlist)
     return newlist
 
+def relist2(file,x1,x2):
+    namelist=[]
+    for i in file:
+        name=i.strip().split('\\')[-1]
+        namelist.append(name)
+        #print(name[x1:x2])
+    namelist.sort(key=lambda x:float(x[x1:x2]))
+    newlist=[]
+    for i in namelist:
+        newlist.append(workdirdata+"\\"+i)
+    return newlist
 
 def rename(newfile):
     i = 2
@@ -100,8 +111,10 @@ def fitRHprocess():
         fitfile.close()
         fitfiles = relist(
             [entry.path for entry in os.scandir(workdir + "/data") if "K" in entry.name and "hall" in entry.name])
+        fitfiles=relist2(fitfiles,5,-5)
         fitfilesR = relist(
             [entry.path for entry in os.scandir(workdir + "/data") if "K" in entry.name and "R" in entry.name])
+        fitfilesR = relist2(fitfilesR, 2, -5)
         if fitfiles == []:
             print('没有hall文件')
         else:
@@ -121,9 +134,9 @@ def fitRHprocess():
                     high = float(range[1])
                 while True:
                     line = fitfiles[num].strip().split("-")
-                    line = line[-1].strip().split('K')[0]
-                    arg[num, 1:] = fitRH(fitfiles[num],fitfilesR[num], line[1], low, high)
-                    arg[num, 0] = line[1]
+                    line = line[-1].strip().split('K')
+                    arg[num, 1:] = fitRH(fitfiles[num],fitfilesR[num], line[0], low, high)
+                    arg[num, 0] = line[0]
                     num = num + 1
                     if num == nums:
                         break
@@ -256,12 +269,12 @@ def fitprocess():
             oneormore = ""  # input("一个温度一个拟合图/所有温度合到一个图（y/n),回车默认为y\n")
             try:
                 while True:
-                    line = fitfiles[num].strip().split("-")
-                    line = line[-1].strip().split('K')[0]
+                    line = Rfitfiles[num].strip().split("-")
+                    line = line[-1].strip().split('K')
                     if oneormore == "y" or oneormore == "":
-                        arg[num, 1:] = fit(Rfitfiles[num], hallfitfiles[num], line[1])
+                        arg[num, 1:] = fit(Rfitfiles[num], hallfitfiles[num], line[0])
                     else:
-                        arg[num, 1:] = fitonefig(Rfitfiles[num], hallfitfiles[num], line[1])
+                        arg[num, 1:] = fitonefig(Rfitfiles[num], hallfitfiles[num], line[0])
                     num = num + 1
                     if num == Rnums:
                         break
@@ -660,6 +673,8 @@ else:
     os.makedirs(workdir + "/fit", 777)
     run = 1
 if run == 1:
+    #fitprocess()
+    #fitRHprocess()
     try:
         fitprocess()
         fitRHprocess()
