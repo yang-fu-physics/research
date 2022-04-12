@@ -29,7 +29,7 @@ def relist(file):
     for i in list:
         i = i + ".dat"
         newlist.append(i)
-    print(newlist)
+    #print(newlist)
     return newlist
 
 
@@ -120,8 +120,8 @@ def fitRHprocess():
                     low = float(range[0])
                     high = float(range[1])
                 while True:
-                    line = fitfiles[num].strip().split('K')
-                    line = line[0].strip().split("-")
+                    line = fitfiles[num].strip().split("-")
+                    line = line[-1].strip().split('K')[0]
                     arg[num, 1:] = fitRH(fitfiles[num],fitfilesR[num], line[1], low, high)
                     arg[num, 0] = line[1]
                     num = num + 1
@@ -256,8 +256,8 @@ def fitprocess():
             oneormore = ""  # input("一个温度一个拟合图/所有温度合到一个图（y/n),回车默认为y\n")
             try:
                 while True:
-                    line = Rfitfiles[num].strip().split('K')
-                    line = line[0].strip().split("-")
+                    line = fitfiles[num].strip().split("-")
+                    line = line[-1].strip().split('K')[0]
                     if oneormore == "y" or oneormore == "":
                         arg[num, 1:] = fit(Rfitfiles[num], hallfitfiles[num], line[1])
                     else:
@@ -430,7 +430,7 @@ def spit(dataT, range, type, interval):
     """将单个温度的数据进行正负场的分离，并使用inter函数，并做平均"""
     row = 1
     Fchange = []
-    print(dataT)
+    #print(dataT)
     while row < dataT.shape[0]:
         if row > 0:
             dataF = dataT[row, 1] * dataT[row - 1, 1]
@@ -492,7 +492,7 @@ def dealdata(name, range, lie, interval, plot, type):
             if abs(data2[row, 0] - data2[row - 1, 0]) > 0.3:  # 判读温度转变点
                 Tchange.append(row)
         row += 1
-    print(Tchange)
+    #print(Tchange)
     """a=0
     for i in Tchange:
         print(i-a)
