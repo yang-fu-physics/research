@@ -34,14 +34,21 @@ def relist(file):
 
 def relist2(file,x1,x2):
     namelist=[]
+    elselist=[]
     for i in file:
         name=i.strip().split('\\')[-1]
-        namelist.append(name)
+        if len(name.strip().split('('))==1:
+            namelist.append(name)
+        else:
+            elselist.append(name)
         #print(name[x1:x2])
     namelist.sort(key=lambda x:float(x[x1:x2]))
+    elselist.sort(key=lambda x:float(x[x1:x2-3]))
     newlist=[]
     for i in namelist:
         newlist.append(workdirdata+"\\"+i)
+    for i in elselist:
+        newlist.append(workdirdata + "\\" + i)
     return newlist
 
 def rename(newfile):
@@ -257,8 +264,10 @@ def fitprocess():
         fitfile.close()
         Rfitfiles = relist(
             [entry.path for entry in os.scandir(workdir + "\data") if "K" in entry.name and "R" in entry.name])
+        Rfitfiles =relist2(Rfitfiles,2,-5)
         hallfitfiles = relist(
             [entry.path for entry in os.scandir(workdir + "\data") if "K" in entry.name and "hall" in entry.name])
+        hallfitfiles = relist2(hallfitfiles, 5, -5)
         Rnums = len(Rfitfiles)
         hallnums = len(hallfitfiles)
         if Rnums != hallnums or Rnums == 0 or hallnums == 0:
