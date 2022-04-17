@@ -6,7 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
 import scipy.stats as st
-
+loop=False
 pi = 3.141592654
 h = 6.62607004 * 10 ** -34
 e = 1.60217733 * 10 ** -19
@@ -58,7 +58,7 @@ def rename(newfile):
     while True:
         try:
             fpw = open(newfile + "." + last, "r")  # 如果不存在会报错
-            fpw.close
+            fpw.close()
             if i == 2:
                 newfile = newfile + "(%i)" % i
             else:
@@ -412,8 +412,16 @@ def inter(m, range, type, interval):
     u, indices = np.unique(m[:, 1], return_index=True)
     fx = interpolate.interp1d(m[indices, 1] / 10000, m[indices, 2], kind="linear",
                               fill_value="extrapolate")  # 'linear','zero', 'slinear', 'quadratic', 'cubic'
-    internumber = int(range * 10000 / interval + 1)
-    x = np.linspace(0, a * range, internumber)
+    if interval[0]=="y":
+        internumber1=int(interval[1] * 10000 / interval[2] + 1)
+        internumber2 = int((range-interval[1])  * 10000 / interval[3] + 1)
+        x1 = np.linspace(0, a * interval[1], internumber1)
+        x2 = np.linspace(a * interval[1], a * range, internumber2)
+        x=np.append(x1,x2[1:],axis=0)
+        internumber = internumber1 + internumber2 - 1
+    else:
+        internumber = int(range * 10000 / interval[1] + 1)
+        x = np.linspace(0, a * range, internumber)
     intery = np.zeros([x.size, 2])
     intery[:, 0] = a * x
     if type == 3:
@@ -423,7 +431,7 @@ def inter(m, range, type, interval):
     # plt.plot(m[:,1],m[:,2],intery[:,0],intery[:,1])
     # plt.show()
     # print(intery)
-    return intery
+    return intery,internumber
 
 
 def interloop(m, range, type, interval):
@@ -434,8 +442,18 @@ def interloop(m, range, type, interval):
     u, indices = np.unique(m[:, 1], return_index=True)
     fx = interpolate.interp1d(m[indices, 1] / 10000, m[indices, 2], kind="linear",
                               fill_value="extrapolate")  # 'linear','zero', 'slinear', 'quadratic', 'cubic'
-    internumber = int(range * 2 * 10000 / interval + 1)
-    x = np.linspace(-a * range, a * range, internumber)
+    if interval[0]=="y":
+        internumber1=int(interval[1] * 2 * 10000 / interval[2] + 1)
+        internumber2 = int((range-interval[1])  * 10000 / interval[3] + 1)
+        x1 = np.linspace(-a * range, -a * interval[1], internumber2)
+        x2 = np.linspace(-a * interval[1], a * interval[1], internumber1)
+        x3 = np.linspace(a * interval[1], a * range, internumber2)
+        x=np.append(x1,x2[1:],axis=0)
+        x=np.append(x,x3[1:],axis=0)
+        internumber=internumber1+internumber2*2-2
+    else:
+        internumber = int(range * 2 * 10000 / interval[1] + 1)
+        x = np.linspace(-a * range, a * range, internumber)
     intery = np.zeros([x.size, 2])
     intery[:, 0] = a * x
     if type == 3:
@@ -445,11 +463,12 @@ def interloop(m, range, type, interval):
     # plt.plot(m[:,1],m[:,2],intery[:,0],intery[:,1])
     # plt.show()
     # print(intery)
-    return intery
+    return intery,internumber
 
 
 def spit(dataT, range, type, interval):
     """将单个温度的数据进行正负场的分离，并使用inter函数，并做平均"""
+    global loop
     row = 1
     Fchange = []
     #print(dataT)
@@ -461,16 +480,18 @@ def spit(dataT, range, type, interval):
         row = row + 1
     if len(Fchange) == 2:
         print("存在loop线，需要注意是否数据有问题,按照loop线处理")
+        loop=True
         row = 3
         Fchange2 = []
         while row < dataT.shape[0]:
             if row > 0:
-                if np.argmax(dataT[row - 3:row, 1]) == 1 or np.argmax(dataT[row - 3:row, 1]) == 1:
+                if np.argmax(dataT[row - 3:row, 1]) == 1 or np.argmin(dataT[row - 3:row, 1]) == 1:
                     Fchange2.append(row - 1)
             row = row + 1
-        a1 = dataT[Fchange2[-2]:Fchange[-1] + 1, :]
+        a1 = dataT[:Fchange2[-1], :]
         a2 = dataT[Fchange2[-1]:, :]
-        av = (interloop(a1, range, type, interval) + interloop(a2, range, type, interval)) / 2
+        [av1,internumber1] = interloop(a1, range, type, interval)
+        [av2,internumber2]=interloop(a2, range, type, interval)
     elif len(Fchange) > 2:
         print("单个温度数据三次及以上经过零点，请检查数据")
         print(1 / 0)
@@ -479,13 +500,16 @@ def spit(dataT, range, type, interval):
         a1 = dataT[:j + 1, :]
         a2 = dataT[j - 1:, :]
         # print(a1,a2)
-        av = (inter(a1, range, type, interval) + inter(a2, range, type, interval)) / 2
-    return av
+        [av1,internumber1]= inter(a1, range, type, interval)
+        [av2,internumber2]=inter(a2, range, type, interval)
+    av=(av1+av2)/2
+    internumber=internumber2
+    return av,internumber
 
 
 def dealdata(name, range, lie, interval, plot, type):
     """处理数据的主体,type=2为R，type=3为hall"""
-    dataall = np.zeros([int(range * 10000 / interval + 1), 40])
+    global loop
     plt.subplot(plot)
     a = open(name, "r+")
     data = a.readlines()
@@ -525,7 +549,7 @@ def dealdata(name, range, lie, interval, plot, type):
     while True:
         if i > 0:  # 以温度为依据分段
             dataT = data2[Tchange[i - 1]:Tchange[i], :]  # dataT为每个温度的分离
-            dataspit = spit(dataT, range, type, interval)
+            [dataspit,internumber] = spit(dataT, range, type, interval)
             plt.plot(dataT[:, 1], dataT[:, 2], label="%.1f" % data2[Tchange[i - 1], 0] + "K")
             if type == 3:
                 plt.ylabel("Ryx(ohm)")
@@ -539,7 +563,11 @@ def dealdata(name, range, lie, interval, plot, type):
                 dataT = data2[:, :]
             else:
                 dataT = data2[:Tchange[i], :]
-            dataspit = spit(dataT, range, type, interval)
+            [dataspit,internumber]= spit(dataT, range, type, interval)
+            if loop:
+                dataall = np.zeros([internumber, 40])
+            else:
+                dataall = np.zeros([internumber, 40])
             dataall[:, 0] = dataspit[:, 0]
             dataall[:, i + 1] = dataspit[:, 1]
             plt.plot(dataT[:, 1], dataT[:, 2], label="%.1f" % data2[0, 0] + "K")
@@ -552,7 +580,7 @@ def dealdata(name, range, lie, interval, plot, type):
                 break
         if i == len(Tchange) - 1:  # 如果是最后一个点，则额外输出一个至最后的数组。并跳出循环
             dataT = data2[Tchange[i]:, :]
-            dataspit = spit(dataT, range, type, interval)
+            [dataspit,internumber] = spit(dataT, range, type, interval)
             dataall[:, 0] = dataspit[:, 0]
             dataall[:, i + 2] = dataspit[:, 1]
             plt.plot(dataT[:, 1], dataT[:, 2], label="%.1f" % data2[Tchange[i], 0] + "K")
@@ -606,6 +634,7 @@ def deal(file, range, interval, abc):
             plot(headline, dataR, "rho(ohm cm)")
     # hall处理
     if halltest(file) or type == "H":
+        mrhead = ""
         if type == "H":
             fig = plt.figure(figsize=(9.6, 10.8))
             [datahall, headline] = dealdata(file, range, 2, interval, 211, 3)
@@ -629,7 +658,7 @@ def deal(file, range, interval, abc):
             plot(headline, datahall, "Ryx(ohm)")
         else:
             plot(headline, datahall, "rhoyx(ohm cm)")
-        savesinglefile(headlinestr, datahall, "hall", abc,mrhead)
+        savesinglefile(headlinestr, datahall, "hall", abc, mrhead)
     plt.tight_layout()
     plt.show()
     fig.savefig("alldata.png")
@@ -650,18 +679,33 @@ if run == 1:
         print("dat文件过多")
     else:
         print("文件名是" + datafile[0])
-        range = input("输入内插范围（一位小数）,最大值即可,回车则默认为14\n")
+        multistep=input("是否分段插值（y/n），回车默认不分段，仅支持三段插值，两个插值间隔\n")
+        range = input("输入内插范围（一位小数,单位特斯拉）,最大值即可,回车则默认为14\n")
         if range == "":
             range = 14
         else:
             range = float(range)
         print("插值范围为0-%.1f" % range)
-        interval = input("输入内插间隔，回车则默认20 Oe\n")
-        if interval == "":
-            interval = 20
+        interval = input("输入内插间隔，回车则默认20（单位为Oe），若是分段插值，示例：4，20，100，意为对于没有loop分两段，0-4T，20间隔，4T-max，100间隔，对于有loop的则是三段，min-(-4T)，-4T-4T，4T-max,间隔为100，20，100\n")
+        if multistep=="y":
+            if interval == "":
+                multistep = "n"
+                interval=20
+                print("内插间隔为%.0d" % interval)
+            else:
+                midrange=float(interval.strip().split(',')[0])
+                interval1=float(interval.strip().split(',')[1])
+                interval2 = float(interval.strip().split(',')[2])
+                intervalnumbers=int(midrange * 2 * 10000 / interval1 + 1)*2+int((range - midrange) * 2 * 10000 / interval2 + 1)-2
+                print("分段插值：分段的位置为%.2d，前段(三段的中段）间隔为%.0d，后段间隔为%.0d\n"%(midrange,interval1,interval2))
+                interval=[multistep,midrange,interval1,interval2,intervalnumbers]
         else:
-            interval = float(interval)
-        print("内插间隔为%.0d" % interval)
+            if interval == "":
+                interval = 20
+            else:
+                interval = float(interval)
+            print("内插间隔为%.0d" % interval)
+            interval=[multistep,interval]
         abc = input("输入长宽高，逗号隔开，单位为cm，回车则皆为1，即输出为电阻\n")
         if abc == "":
             abc = "1,1,1"
@@ -685,6 +729,8 @@ if run == 1:
     #fitprocess()
     #fitRHprocess()
     try:
+        if loop:
+            print("对于有loop的数据不建议使用双带拟合")
         fitprocess()
         fitRHprocess()
     except Exception as error:
