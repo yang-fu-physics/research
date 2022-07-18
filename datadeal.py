@@ -437,7 +437,10 @@ def inter(m, range, type, interval):
 def interloop(m, range, type, interval):
     """根据输入的m数据，range范围，lie霍尔或者电阻的列数用于判读是内插的y的正负，interval内插间隔"""
     a = 1
-    if m[2, 1] - m[1, 1] < 0:  # 判断升场还是降场
+    emm=0
+    while m[emm+1, 1] - m[emm, 1]==0:
+        emm=emm+1
+    if m[emm+1, 1] - m[0, 1] < 0:  # 判断升场还是降场
         a = -1
     u, indices = np.unique(m[:, 1], return_index=True)
     fx = interpolate.interp1d(m[indices, 1] / 10000, m[indices, 2], kind="linear",
@@ -475,7 +478,7 @@ def spit(dataT, range, type, interval):
     while row < dataT.shape[0]:
         if row > 0:
             dataF = dataT[row, 1] * dataT[row - 1, 1]
-            if dataF < 0:  # 判断磁场转变点，正负转换
+            if dataF <= 0:  # 判断磁场转变点，正负转换
                 Fchange.append(row)
         row = row + 1
     if len(Fchange) == 2:
@@ -488,8 +491,17 @@ def spit(dataT, range, type, interval):
                 if np.argmax(dataT[row - 3:row, 1]) == 1 or np.argmin(dataT[row - 3:row, 1]) == 1:
                     Fchange2.append(row - 1)
             row = row + 1
+        emm = 0
+        while dataT[emm + 1, 1] - dataT[emm, 1] == 0:
+            emm = emm + 1
+        if dataT[emm+1, 1] - dataT[emm, 1] > 0:
+            Fchange2 = [np.argmax(dataT[:, 1])]
+            print("升")
+        else:
+            Fchange2 = [np.argmin(dataT[:, 1])]
         a1 = dataT[:Fchange2[-1], :]
         a2 = dataT[Fchange2[-1]:, :]
+        print(a1)
         [av1,internumber1] = interloop(a1, range, type, interval)
         [av2,internumber2]=interloop(a2, range, type, interval)
     elif len(Fchange) > 2:
