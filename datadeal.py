@@ -73,8 +73,15 @@ def rename(newfile):
 def fitRH(hallfile, Rfile, temp, low, high):
     """对hall数"""
     datahall = filetonumpy(hallfile)
-    dataR=filetonumpy(Rfile)
-    rho0=dataR[0,1]
+    try:
+        dataR=filetonumpy(Rfile)
+    except:
+        onlyhall=True
+        rho0 = 1
+        print("没有发现电阻数据，将不输出迁移率")
+    else:
+        onlyhall=False
+        rho0 = dataR[0, 1]
     # data = np.vstack((datahall,dataR[::-1, :]))
     figRH = plt.figure(figsize=(16, 9))
     plt.plot(datahall[:, 0], datahall[:, 1], "rx", label=temp + "K")
@@ -103,7 +110,10 @@ def fitRH(hallfile, Rfile, temp, low, high):
             fitstr = fitstr + "," + "%e" % intercept
             fitstr = fitstr + "," + "%e" % r_value
             fitstr = fitstr + "," + "%e" % n
-            fitstr = fitstr + "," + "%e" % miu
+            if onlyhall==False:
+                fitstr = fitstr + "," + "%e" % miu
+            else:
+                fitstr = fitstr + ",--"
             fitfile.write(fitstr + "\n")
     plt.close()
     figRH.savefig(rename(workdirfit + "RH-" + temp + "K.png"))
@@ -142,7 +152,10 @@ def fitRHprocess():
                 while True:
                     line = fitfiles[num].strip().split("-")
                     line = line[-1].strip().split('K')
-                    arg[num, 1:] = fitRH(fitfiles[num],fitfilesR[num], line[0], low, high)
+                    if fitfilesR == []:
+                        arg[num, 1:] = fitRH(fitfiles[num],"", line[0], low, high)
+                    else:
+                        arg[num, 1:] = fitRH(fitfiles[num], fitfilesR[num], line[0], low, high)
                     arg[num, 0] = line[0]
                     num = num + 1
                     if num == nums:
@@ -474,7 +487,7 @@ def spit(dataT, range, type, interval):
     global loop
     row = 1
     Fchange = []
-    #print(dataT)
+    print("当前处理温度%.1fK"%dataT[0,0])
     while row < dataT.shape[0]:
         if row > 0:
             dataF = dataT[row, 1] * dataT[row - 1, 1]
@@ -692,12 +705,12 @@ if run == 1:
     else:
         print("文件名是" + datafile[0])
         multistep=input("是否分段插值（y/n），回车默认不分段，仅支持三段插值，两个插值间隔\n")
-        range = input("输入内插范围（一位小数,单位特斯拉）,最大值即可,回车则默认为14\n")
+        range = input("输入内插范围（四位小数,单位特斯拉）,最大值即可,回车则默认为14\n需要注意：因为我们扫场一般用的No O'shot，所以最大磁场会比设定场要低一点，数据可能最后可能会跳，处理方法是将范围写低一点，例如设定5T写到4.9999\n")
         if range == "":
             range = 14
         else:
             range = float(range)
-        print("插值范围为0-%.1f" % range)
+        print("插值范围为0-%.4f" % range)
         interval = input("输入内插间隔，回车则默认20（单位为Oe），若是分段插值，示例：4，20，100，意为对于没有loop分两段，0-4T，20间隔，4T-max，100间隔，对于有loop的则是三段，min-(-4T)，-4T-4T，4T-max,间隔为100，20，100\n")
         if multistep=="y":
             if interval == "":
