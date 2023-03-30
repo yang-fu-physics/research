@@ -189,17 +189,65 @@ def function(x, ne, nh, miue, miuh):
                      (nh * miuh ** 2 - ne * miue ** 2) + (nh - ne) * (miue * miuh) ** 2 * x ** 2) / (
                      (nh * miuh + ne * miue) ** 2 + (nh - ne) ** 2 * (miue * miuh) ** 2 * x ** 2)
     return result
-
-def functionnew(x, ne, nh, miue, miuh):
-    result1 =100 / e * (
+"""
+def functionR(x, ne, nh, miue, miuh):
+    result=100 / e * (
             (ne * miue + nh * miuh) + (nh * miue + ne * miuh) * miuh * miue * x ** 2) / (
                      (ne * miue + nh * miuh) ** 2 + (nh - ne) ** 2 * (miue * miuh) ** 2 * x ** 2)
-    result2=0.5 * (
-                     1 + np.sign(x)) * 100 * x / e * (
-                     (nh * miuh ** 2 - ne * miue ** 2) + (nh - ne) * (miue * miuh) ** 2 * x ** 2) / (
-                     (nh * miuh + ne * miue) ** 2 + (nh - ne) ** 2 * (miue * miuh) ** 2 * x ** 2)
-    result=np.concatenate((result1, result2))
     return result
+def functionhall(x, ne, nh, miue, miuh):
+    result=100 / e * (
+            (ne * miue + nh * miuh) + (nh * miue + ne * miuh) * miuh * miue * x ** 2) / (
+                     (ne * miue + nh * miuh) ** 2 + (nh - ne) ** 2 * (miue * miuh) ** 2 * x ** 2)
+    return result
+def functionnew(x, ne, nh, miue, miuh):
+    result=np.concatenate((functionR(x, ne, nh, miue, miuh), functionhall(x, ne, nh, miue, miuh)))
+    return result
+def fitnew(Rfile, hallfile, temp):
+    #对hall数据文件和电阻数据文件拼接，并使用双带模型拟合，并对每一个温度产生一个电阻图和一个hall图
+    datahall = filetonumpy(hallfile)
+    dataR = filetonumpy(Rfile)
+    xdata = np.concatenate((dataR[:,0], datahall[:,0]))
+    ydata = np.concatenate((dataR[:,1], datahall[:,1]))
+    # data = np.vstack((datahall,dataR[::-1, :]))
+    figtwo = plt.figure(figsize=(16, 9))
+    plt.subplot(121)
+    plt.plot(dataR[:, 0], dataR[:, 1], "rx", label=temp + "K")
+    plt.legend()
+    plt.subplot(122)
+    plt.plot(datahall[:, 0], datahall[:, 1], "rx", label=temp + "K")
+    plt.legend()
+
+    def weighted_func(x, ne, nh, miue, miuh):
+        weights = np.ones(np.shape(x))
+        weights[4] = 1
+        return functionnew(x, ne, nh, miue, miuh) * weights
+    try:
+        p_est, err_est = curve_fit(weighted_func, xdata, ydata)
+        #p_est, err_est = curve_fit(function, data[:, 0], data[:, 1])#如果这里跑飞，则是需要添加初值列表，在括号中的最后即可。
+    except RuntimeError:
+        p_est = np.array([0, 0, 0, 0])
+        print(temp + "K拟合失败")
+    else:
+        plt.subplot(121)
+        plt.plot(dataR[:, 0], functionR(dataR[:, 0], *p_est), "k--", label=temp + "K-fit")
+        plt.legend()
+        plt.subplot(122)
+        plt.plot(datahall[:, 0], functionhall(datahall[:, 0], *p_est), "k--", label=temp + "K-fit")
+        plt.legend()
+        with open(workdirfit + "twobandfit.dat", "a") as fitfile:
+            fitstr = temp
+            p_est[0]=p_est[0]/1000000
+            p_est[1] = p_est[1] / 1000000
+            p_est[2] = p_est[2] * 10000
+            p_est[3] = p_est[3] * 10000
+            for i in p_est:
+                fitstr = fitstr + "," + "%e" % i
+            fitfile.write(fitstr + "\n")
+    plt.close()
+    figtwo.savefig(rename(workdirfit + "twoband-" + temp + "K.png"))
+    return p_est
+    """
 def fit(Rfile, hallfile, temp):
     """对hall数据文件和电阻数据文件拼接，并使用双带模型拟合，并对每一个温度产生一个电阻图和一个hall图"""
     datahall = filetonumpy(hallfile)
@@ -767,7 +815,7 @@ else:
     os.makedirs(workdir + "/fit", 777)
     run = 1
 if run == 1:
-    #fitprocess()
+    fitprocess()
     #fitRHprocess()
     try:
         if loop:

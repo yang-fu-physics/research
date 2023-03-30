@@ -22,6 +22,7 @@ class Stats:
         self.localtime = time.localtime(time.time())
         self.ui.start.clicked.connect(self.getstarttime)
         self.ui.stop.clicked.connect(self.getstoptime)
+        self.ui.time.setText("")
         #self.ui.reset.clicked.connect(self.reset)
         self.Staus = False
         self.ui.setWindowFlags(QtCore.Qt.WindowStaysOnTopHint)
@@ -60,6 +61,8 @@ def b():
             stats.time=time.time()-stats.starttime+stats.time
             stats.starttime=newtime
             stats.ui.bar.setValue(int(stats.time / (8*36)))
+            stats.ui.time.setText("\t%i小时%i分钟%i秒" % (
+            stats.time // 3600, stats.time % 3600 // 60, stats.time % 3600 % 60))
         else:
             time.sleep(1)
             #print(stats.Staus)
