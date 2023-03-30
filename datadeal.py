@@ -223,7 +223,7 @@ def fit(Rfile, hallfile, temp):
         #return function(x, ne, nh, miue, miuh) * weights
     try:
         #p_est, err_est = curve_fit(weighted_func, xdata, ydata)
-        p_est, err_est = curve_fit(function, data[:, 0], data[:, 1])
+        p_est, err_est = curve_fit(function, data[:, 0], data[:, 1])#如果这里跑飞，则是需要添加初值列表，在括号中的最后即可。
     except RuntimeError:
         p_est = np.array([0, 0, 0, 0])
         print(temp + "K拟合失败")
