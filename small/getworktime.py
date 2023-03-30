@@ -1,17 +1,18 @@
-from PySide2.QtWidgets import QApplication, QMessageBox
-from PySide2.QtUiTools import QUiLoader
-from PySide2.QtGui import QTextCursor
+from PySide6.QtWidgets import QApplication, QMessageBox
+from PySide6.QtUiTools import QUiLoader
+from PySide6.QtGui import QTextCursor
+from PySide6 import QtCore
 import time
 import threading
 class Stats:
 
     def __init__(self):
         # 从文件中加载UI定义
-
         # 从 UI 定义中动态 创建一个相应的窗口对象
         # 注意：里面的控件对象也成为窗口对象的属性了
         # 比如 self.ui.button , self.ui.textEdit
-        self.ui = QUiLoader().load('C:\\Users\\Admin\\PycharmProjects\\111\\small\\11.ui')
+        self.ui = QUiLoader().load('C:\\'
+                                   'Users\\Admin\\Desktop\\研究生\\python\\111\\small\\11.ui')
         self.starttime=0
         self.stoptime=0
         self.time = 0
@@ -22,7 +23,8 @@ class Stats:
         self.ui.start.clicked.connect(self.getstarttime)
         self.ui.stop.clicked.connect(self.getstoptime)
         #self.ui.reset.clicked.connect(self.reset)
-        self.Staus=False
+        self.Staus = False
+        self.ui.setWindowFlags(QtCore.Qt.WindowStaysOnTopHint)
     def getstarttime(self):
         self.starttime=time.time()
         self.Staus=True

@@ -190,13 +190,24 @@ def function(x, ne, nh, miue, miuh):
                      (nh * miuh + ne * miue) ** 2 + (nh - ne) ** 2 * (miue * miuh) ** 2 * x ** 2)
     return result
 
-
+def functionnew(x, ne, nh, miue, miuh):
+    result1 =100 / e * (
+            (ne * miue + nh * miuh) + (nh * miue + ne * miuh) * miuh * miue * x ** 2) / (
+                     (ne * miue + nh * miuh) ** 2 + (nh - ne) ** 2 * (miue * miuh) ** 2 * x ** 2)
+    result2=0.5 * (
+                     1 + np.sign(x)) * 100 * x / e * (
+                     (nh * miuh ** 2 - ne * miue ** 2) + (nh - ne) * (miue * miuh) ** 2 * x ** 2) / (
+                     (nh * miuh + ne * miue) ** 2 + (nh - ne) ** 2 * (miue * miuh) ** 2 * x ** 2)
+    result=np.concatenate((result1, result2))
+    return result
 def fit(Rfile, hallfile, temp):
     """对hall数据文件和电阻数据文件拼接，并使用双带模型拟合，并对每一个温度产生一个电阻图和一个hall图"""
     datahall = filetonumpy(hallfile)
     dataR = filetonumpy(Rfile)
+    #xdata = np.concatenate((dataR[:,0], datahall[:,0]))
+    #ydata = np.concatenate((dataR[:,1], datahall[:,1]))
     dataR[:, 0] = -1 * dataR[:, 0]
-    data = np.vstack((dataR[::-1, :], datahall))
+    data = np.vstack((dataR[::-1, :], datahall))#可能有问题注意后续修改
     # data = np.vstack((datahall,dataR[::-1, :]))
     half = np.shape(dataR)[0]
     figtwo = plt.figure(figsize=(16, 9))
@@ -206,7 +217,12 @@ def fit(Rfile, hallfile, temp):
     plt.subplot(122)
     plt.plot(datahall[:, 0], datahall[:, 1], "rx", label=temp + "K")
     plt.legend()
+    #weights = np.ones(data[:, 0])
+    #weights[4] = 15
+    #def weighted_func(x, ne, nh, miue, miuh):
+        #return function(x, ne, nh, miue, miuh) * weights
     try:
+        #p_est, err_est = curve_fit(weighted_func, xdata, ydata)
         p_est, err_est = curve_fit(function, data[:, 0], data[:, 1])
     except RuntimeError:
         p_est = np.array([0, 0, 0, 0])
