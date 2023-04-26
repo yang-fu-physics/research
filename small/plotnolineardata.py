@@ -5,7 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
 import scipy.stats as st
-tuli=2#调整是否在下方二三行的图中给出图例，1不给图例，0给图例，2是全部不给图例
+tuli=0#调整是否在下方二三行的图中给出图例，1不给图例，0给图例，2是全部不给图例
 workdir=os.getcwd()
 def relist2(file,suffixnum):
     namelist=[]
@@ -27,9 +27,9 @@ parameters = {'xtick.labelsize': 15,
               "legend.fontsize": 11}
 plt.rcParams.update(parameters)
 
-#labels={"x":"Source Current","y11":"R1(V)","y12":"R2(V)","y13":"R3(V)","y14":"R4(V)","y21":"R1(Ohm)","y22":"R2(Ohm)","y23":"R3(Ohm)","y24":"R4(Ohm)","y31":"Theta1","y32":"Theta2","y33":"Theta3","y34":"Theta4"}
+labels={"x":"Source Current","y11":"R1(V)","y12":"R2(V)","y13":"R3(V)","y14":"R4(V)","y21":"R1(Ohm)","y22":"R2(Ohm)","y23":"R3(Ohm)","y24":"R4(Ohm)","y31":"Theta1(degree)","y32":"Theta2(degree)","y33":"Theta3","y34":"Theta4"}
 #labels={"x":"Field(Oe)","y11":"R1(V)","y12":"R2(V)","y13":"R3(V)","y14":"R4(V)","y21":"R1(Ohm)","y22":"R2(Ohm)","y23":"R3(Ohm)","y24":"R4(Ohm)","y31":"Theta1","y32":"Theta2","y33":"Theta3","y34":"Theta4"}
-labels={"x":"Temp(K)","y11":"R1(V)","y12":"R2(V)","y13":"R3(V)","y14":"R4(V)","y21":"R1(Ohm)","y22":"R2(Ohm)","y23":"R3(Ohm)","y24":"R4(Ohm)","y31":"Theta1","y32":"Theta2","y33":"Theta3","y34":"Theta4"}
+#labels={"x":"Temp(K)","y11":"R1(V)","y12":"R2(V)","y13":"R3(V)","y14":"R4(V)","y21":"R1(Ohm)","y22":"R2(Ohm)","y23":"R3(Ohm)","y24":"R4(Ohm)","y31":"Theta1","y32":"Theta2","y33":"Theta3","y34":"Theta4"}
 
 """
 x="Field(Oe)"
@@ -83,20 +83,20 @@ def main(file):
         else:
             if tuli==1:#调整是否在下方二三行的图中给出图例，1不给图例，0给图例，2是全部不给图例
                 if (j-1)//4!=0:
-                    plt.plot(data[:, x], data[:, datalie])
+                    plt.plot(data[:, x]*1000, data[:, datalie])
                 else:
-                    plt.plot(data[:,x], data[:,datalie], label=file.strip().split('\\')[-1][:-4])
+                    plt.plot(data[:,x]*1000, data[:,datalie], label=file.strip().split('\\')[-1][:-4])
                     plt.legend()
-                plt.xlabel(labels["x"],fontsize=20)
+                plt.xlabel(labels["x"]+"(mA)",fontsize=20)
                 plt.ylabel(label,fontsize=20)
             elif tuli==0:
-                plt.plot(data[:, x], data[:, datalie], label=file.strip().split('\\')[-1][:-4])
-                plt.xlabel(labels["x"], fontsize=20)
+                plt.plot(data[:, x]*1000, data[:, datalie], label=file.strip().split('\\')[-1][:-4])
+                plt.xlabel(labels["x"]+"(mA)", fontsize=20)
                 plt.ylabel(label, fontsize=20)
                 plt.legend()
             else:
-                plt.plot(data[:, x], data[:, datalie])
-                plt.xlabel(labels["x"], fontsize=20)
+                plt.plot(data[:, x]*1000, data[:, datalie])
+                plt.xlabel(labels["x"]+"(mA)", fontsize=20)
                 plt.ylabel(label, fontsize=20)
         j=j+1
 

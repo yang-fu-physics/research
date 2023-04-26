@@ -1,13 +1,12 @@
 import os
 import numpy as np
-
-workdir = os.getcwd()
+import time
+workdir = os.getcwd()+"\\12"
 pi = 3.141592654
 h = 6.62607004 * 10 ** -34
 e = 1.60217733 * 10 ** -19
 me = 9.10938356 * 10 ** -30
 file = [entry.path for entry in os.scandir(workdir) if entry.name.endswith(".dat")]
-workdir = os.getcwd()
 def rename(newfile):
     i = 2
     last=newfile.strip().split('.')[-1]
@@ -33,9 +32,10 @@ def addheadline(headline, oldfile, newfile):
         fpw=open(rename(newfile),"w+")
         fpw.write(headline + tmp_data)#原本headline就有回车
         fpw.close()
+    time.sleep(0.1)
     os.remove(oldfile)
 def dealdata(name,lie,unit,error,pre):
-    """处理数据的主体,lie代表转变点"""
+    """处理数据的主体,lie代表转变点#需要更改第二项选择分隔依据，低四项是分隔标准"""
     a = open(name, "r+")
     headstr=a.readline()
     head=headstr.strip().split('\t')
@@ -44,7 +44,7 @@ def dealdata(name,lie,unit,error,pre):
     rows = len(data)  # 数据总行
     l = 0
     for line in data:
-        line = line.strip().split(',|\t')  # strip()默认移除字符串首尾空格或换行符
+        line = line.strip().split('\t')  # strip()默认移除字符串首尾空格或换行符
         if line[0] == "--":
             l = l + 1
     rows = rows - l  # 确认非空数据行数
@@ -73,6 +73,8 @@ def dealdata(name,lie,unit,error,pre):
             else:
                 dataT = data2[:Tchange[i], :]
             if Tchange == []:
+                np.savetxt("tmp.dat", dataT, fmt="%.8e", delimiter="\t")
+                addheadline(headstr, "tmp.dat", pre + "%.1f" % dataT[0, lie] + unit + ".dat")
                 break
         np.savetxt("tmp.dat", dataT, fmt="%.8e", delimiter="\t")
         addheadline(headstr, "tmp.dat", pre + "%.1f" % dataT[0, lie] + unit + ".dat")
@@ -94,7 +96,7 @@ if 0==0:
     if len(file) > 1:
         print("dat文件过多")
     else:
-        dealdata(file[0],1,"K",0.2,"")
+        dealdata(file[0],2,"K",0.2,"")#需要更改第二项选择分隔依据，低四项是分隔标准
 file = [entry.path for entry in os.scandir(workdir) if entry.name.endswith("K.dat")]
 for i in file:
-    dealdata(i,14,"Hz",0.5,i[:-4]+"-")
+    dealdata(i,6,"Hz",0.5,i[:-4]+"-")

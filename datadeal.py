@@ -103,6 +103,8 @@ def fitRH(hallfile, Rfile, temp, low, high):
         plt.legend()
         slope = slope * 10000  # 单位转换
         n = 1 / slope * Ce
+        #dof=datahall.shape[0]-2
+        #t=st.t.ppf(1-0.05/2, dof)*std_err#本来想计算置信区间也就是参数误差，但是发现不太对，这样对于所有参数之心区间是相同的，就注释掉了。
         miu = slope/rho0
         with open(workdirfit + "fitRH.dat", "a") as fitfile:
             fitstr = temp
@@ -110,6 +112,7 @@ def fitRH(hallfile, Rfile, temp, low, high):
             fitstr = fitstr + "," + "%e" % intercept
             fitstr = fitstr + "," + "%e" % r_value
             fitstr = fitstr + "," + "%e" % n
+            #fitstr = fitstr + "," + "%e" % t
             if onlyhall==False:
                 fitstr = fitstr + "," + "%e" % miu
             else:
@@ -117,7 +120,7 @@ def fitRH(hallfile, Rfile, temp, low, high):
             fitfile.write(fitstr + "\n")
     plt.close()
     figRH.savefig(rename(workdirfit + "RH-" + temp + "K.png"))
-    return slope, intercept, r_value
+    return slope, intercept, r_value#, std_err
 
 
 def fitRHprocess():
