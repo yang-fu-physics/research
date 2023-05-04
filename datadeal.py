@@ -285,6 +285,9 @@ def fit(Rfile, hallfile, temp):
         plt.subplot(122)
         plt.plot(data[half + 1:, 0], function(data[half + 1:, 0], *p_est), "k--", label=temp + "K-fit")
         plt.legend()
+        perr = np.sqrt(np.diag(err_est))
+        t_value = 2.0  # 使用 95% 的置信度
+        ci = t_value * perr
         with open(workdirfit + "twobandfit.dat", "a") as fitfile:
             fitstr = temp
             p_est[0]=p_est[0]/1000000
@@ -292,6 +295,8 @@ def fit(Rfile, hallfile, temp):
             p_est[2] = p_est[2] * 10000
             p_est[3] = p_est[3] * 10000
             for i in p_est:
+                fitstr = fitstr + "," + "%e" % i
+            for i in ci:
                 fitstr = fitstr + "," + "%e" % i
             fitfile.write(fitstr + "\n")
     plt.close()
@@ -340,7 +345,7 @@ def fitprocess():
     fitornot = input("是否进行双带线性拟合（y/n），回车默认不拟合，拟合会产生每个温度的拟合图像\n")
     if fitornot == "y":
         fitfile = open(workdirfit + "twobandfit.dat", "w+")
-        fitfile.write("Temp(K),ne(cm^-3),nh(cm^-3),miue(cm^2/(s*V)),miuh(cm^2/(s*V))\n")
+        fitfile.write("Temp(K),ne(cm^-3),nh(cm^-3),miue(cm^2/(s*V)),miuh(cm^2/(s*V)),ne Confidence intervals(cm^-3),nh Confidence intervals(cm^-3),miue Confidence intervals(cm^2/(s*V)),miuh Confidence intervals(cm^2/(s*V))\n")
         fitfile.close()
         Rfitfiles = relist(
             [entry.path for entry in os.scandir(workdir + "\data") if "K" in entry.name and "R" in entry.name])
