@@ -1,24 +1,5 @@
 # 主要是在科研中使用的一些代码
-## 1. CsV3Sb5 文件夹内容及使用指南
-
-CsV3Sb5 文件夹中主要包含撰写 CsV3Sb5 量子振荡使用的一些代码，具体功能如下：
-
-- `dealhighfile-deg.py`：读取多个数据文件，并提取相应列数至同一文件。
-- `SkeafWannier90ToStandardBXSF.py`：将 Wannier 计算的结果转换为 Win2k 的 BXSF 文件，主要是单位和格式处理。
-- `addbxsf.py`：将独立的能带文件合到一个数据文件中，方便直接查看费米面图像。
-- `skeaf.sh`：在 Ubuntu 中调用 Skeaf (Fortran 语言)，完成简单的自动化输入，方便 Python 调用。
-- `CalculateMultiEnergyFreq.py`：调用 `skeaf.sh` 进行不同费米能级（角度）的计算（通过修改 config 文件的方式）。
-- `ResultToDat.py`：将不同能量 Skeaf 计算的结果进行整合。
-- `SkeafDegResultToDat.py`：将不同角度 Skeaf 计算的结果进行整合。
-- `CsVSb.py`：计算费米截面大小，布里渊区大小，单位转换等等。
-
-## 2. small 文件夹内容及使用指南
-
-主要是一些小工具：
-- `2harm.py和plotnolineardata.py`：处理非线性霍尔的数据，并作图
-- `search_cutpage_pdf.py`：写了一个pdf搜索，摘取某些页数的程序，主要是为了摘取其中的有基金号部分。
-- 
-## 3. dealdata.py(**组内最常用的功能**)
+## 1. dealdata.py(**组内最常用的功能**)
 
 ### 功能
 将数据以温度为标准将数据分为多个数据文件，画图，并进行内插和正负场处理，并可进行双带拟合和 RH 拟合，处理回滞。需要注意在同一个温度扫场速率不同的问题。
@@ -34,6 +15,26 @@ CsV3Sb5 文件夹中主要包含撰写 CsV3Sb5 量子振荡使用的一些代码
 - 显示一张图片
 - Data 文件夹：会生成 R 数据和 Hall 数据总和文件和单一文件。文件名并附有样品尺寸的信息。
 - Fit 文件夹：双带拟合的数据和拟合的图像，RH 拟合的数据。生成的数据文件可直接拖入 Origin 中。
+
+## 2. CsV3Sb5 文件夹内容及使用指南
+
+CsV3Sb5 文件夹中主要包含撰写 CsV3Sb5 量子振荡使用的一些代码，具体功能如下：
+
+- `dealhighfile-deg.py`：读取多个数据文件，并提取相应列数至同一文件。
+- `SkeafWannier90ToStandardBXSF.py`：将 Wannier 计算的结果转换为 Win2k 的 BXSF 文件，主要是单位和格式处理。
+- `addbxsf.py`：将独立的能带文件合到一个数据文件中，方便直接查看费米面图像。
+- `skeaf.sh`：在 Ubuntu 中调用 Skeaf (Fortran 语言)，完成简单的自动化输入，方便 Python 调用。
+- `CalculateMultiEnergyFreq.py`：调用 `skeaf.sh` 进行不同费米能级（角度）的计算（通过修改 config 文件的方式）。
+- `ResultToDat.py`：将不同能量 Skeaf 计算的结果进行整合。
+- `SkeafDegResultToDat.py`：将不同角度 Skeaf 计算的结果进行整合。
+- `CsVSb.py`：计算费米截面大小，布里渊区大小，单位转换等等。
+
+## 3. small 文件夹内容及使用指南
+
+主要是一些小工具：
+- `2harm.py和plotnolineardata.py`：处理非线性霍尔的数据，并作图
+- `search_cutpage_pdf.py`：写了一个pdf搜索，摘取某些页数的程序，主要是为了摘取其中的有基金号部分。
+- 
 
 ## 4. separate-temp.py
 
