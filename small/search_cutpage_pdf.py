@@ -33,7 +33,7 @@ def fnPDF_ExtractPages(xFileNameOriginal, xFileNameOutput, xPage):
         output.write(outputStream)
         outputStream.close()
 
-workdir = r'C:\Users\Admin\Desktop\11774423'
+workdir = r'C:\Users\Admin\Desktop\123456'
 file = [entry.path for entry in os.scandir(workdir) if entry.name.endswith(".pdf")]
 file.sort(reverse=True)
 k=0
@@ -53,8 +53,8 @@ for i in file:
         newfilename=newfilename+j+"."
     newfilename=newfilename[:-1]
     print(ss)
-    newfilename2='C:\\Users\\Admin\\Desktop\\11774423-2\\'+str(m)+"."+newfilename
-    pagenum=fnPDF_FindText(i,'11774423')
+    newfilename2='C:\\Users\\Admin\\Desktop\\123456-2\\'+str(m)+"."+newfilename
+    pagenum=fnPDF_FindText(i,'123456')
     #print(pagenum)
     if len(pagenum)==0:
         error.append(ss+"("+str(m)+")")
