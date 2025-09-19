@@ -1,5 +1,5 @@
 import os
-
+import pandas as pd
 import numpy
 from scipy import interpolate
 import numpy as np
@@ -274,7 +274,7 @@ def fit(Rfile, hallfile, temp):
         #return function(x, ne, nh, miue, miuh) * weights
     try:
         #p_est, err_est = curve_fit(weighted_func, xdata, ydata)
-        p_est, err_est = curve_fit(function, data[:, 0], data[:, 1])#如果这里跑飞，则是需要添加初值列表，在括号中的最后即可。
+        p_est, err_est = curve_fit(function, data[:, 0], data[:, 1], [1E26,1E26,1,1],maxfev=1500)#如果这里跑飞，则是需要添加初值列表，在括号中的最后即可。
     except RuntimeError:
         p_est = np.array([0, 0, 0, 0])
         print(temp + "K拟合失败")
@@ -348,10 +348,10 @@ def fitprocess():
         fitfile.write("Temp(K),ne(cm^-3),nh(cm^-3),miue(cm^2/(s*V)),miuh(cm^2/(s*V)),ne Confidence intervals(cm^-3),nh Confidence intervals(cm^-3),miue Confidence intervals(cm^2/(s*V)),miuh Confidence intervals(cm^2/(s*V))\n")
         fitfile.close()
         Rfitfiles = relist(
-            [entry.path for entry in os.scandir(workdir + "\data") if "K" in entry.name and "R" in entry.name])
+            [entry.path for entry in os.scandir(workdir + "\\data") if "K" in entry.name and "R" in entry.name])
         Rfitfiles =relist2(Rfitfiles,2,-5)
         hallfitfiles = relist(
-            [entry.path for entry in os.scandir(workdir + "\data") if "K" in entry.name and "hall" in entry.name])
+            [entry.path for entry in os.scandir(workdir + "\\data") if "K" in entry.name and "hall" in entry.name])
         hallfitfiles = relist2(hallfitfiles, 5, -5)
         Rnums = len(Rfitfiles)
         hallnums = len(hallfitfiles)
@@ -378,12 +378,10 @@ def fitprocess():
 
 def halltest(name):
     """通过判断初始数据列数，确认有几行数据，3列返回True"""
-    a = open(name, "r+")
-    data = a.readlines()
-    a.close()
-    line = data[0].strip().split('\t')  # strip()默认移除字符串首尾空格或换行符
-    if len(line) > 3:
-        if len(line) > 4:
+    df = pd.read_csv('Sheet1.dat',sep="\t",header=None,na_values='--')
+    row_count, column_count = df.shape
+    if column_count > 3:
+        if column_count > 4:
             print("报警：数据列数不标准")
             input("输入任意键继续或直接关闭窗口退出")
         return True
@@ -426,7 +424,7 @@ def savesinglefile(headlines, data, type, abc, mrhead):
             if type == "hall":
                 np.savetxt("tmp.dat", data[:, [0, k]], fmt="%.8e", delimiter=",")
             else:
-                MR = (data[:, k] - data[0, k]) / data[0, k] *100
+                MR = (data[:, k] - data[data.shape[0]//2, k]) / data[data.shape[0]//2, k] *100
                 np.savetxt("tmp.dat", np.c_[data[:, [0, k]], MR.T], fmt="%.8e", delimiter=",")
                 MRall[:, k] = MR.T
             if abc == "1,1,1":
@@ -560,6 +558,7 @@ def spit(dataT, range, type, interval):
     row = 1
     Fchange = []
     print("当前处理温度%.1fK"%dataT[0,0])
+    print(dataT)
     while row < dataT.shape[0]:
         if row > 0:
             dataF = dataT[row, 1] * dataT[row - 1, 1]
@@ -608,7 +607,9 @@ def dealdata(name, range, lie, interval, plot, type):
     """处理数据的主体,type=2为R，type=3为hall"""
     global loop
     plt.subplot(plot)
-    a = open(name, "r+")
+    data = pd.read_csv(name,sep="\t",header=None,na_values='--')
+    rows, column_count = data.shape
+    """a = open(name, "r+")
     data = a.readlines()
     a.close()
     rows = len(data)  # 数据总行
@@ -618,23 +619,23 @@ def dealdata(name, range, lie, interval, plot, type):
         if line[lie] == "--":
             l = l + 1
     rows = rows - l  # 确认非空数据行数
-    # print(rows)
+    # print(rows)"""
     data2 = np.zeros((rows, 3))  # 创建数据储存矩阵
     row = 0  # 数据处理的行数
     Tchange = []  # 温度变化点
     Fchange = []  # 磁场变化点
-    for line in data:
-        line = line.strip().split('\t')
-        if line[lie] == "--" or line[lie] == "":
+    for line in data.itertuples():
+        if pd.isnull(line[lie+1]):
             continue
-        data2[row, 0] = line[0]
-        data2[row, 1] = line[1]
-        data2[row, 2] = line[lie]  # 数据转移至data2并处理空格
+        data2[row, 0] = line[1]
+        data2[row, 1] = line[2]
+        data2[row, 2] = line[lie+1]  # 数据转移至data2并处理空格
         # print(data2[row,0])
         if row > 0:
-            if abs(data2[row, 0] - data2[row - 1, 0]) > 0.3:  # 判读温度转变点
+            if abs(data2[row, 0] - data2[row - 1, 0]) > 2:  # 判读温度转变点
                 Tchange.append(row)
         row += 1
+    data2=data2[:row,:]
     #print(Tchange)
     """a=0
     for i in Tchange:
@@ -695,21 +696,29 @@ def dealdata(name, range, lie, interval, plot, type):
     return dataall, data2[Tchange, 0]
 
 
-def deal(file, range, interval, abc):
+def deal(file, Frange, interval, abc):
     """处理数据的多个温度文件的储存"""
     if halltest(file):
         fig = plt.figure(figsize=(19.2, 10.8))
-        [dataR, headline] = dealdata(file, range, 2, interval, 221, 2)
+        [dataR, headline] = dealdata(file, Frange, 2, interval, 221, 2)
         type = "R"
     else:
         type = input("检测到只有三列数据，请输入R或者H(hall)，回车默认R\n")
         if type == "R" or type == "":
             type = "R"
             fig = plt.figure(figsize=(9.6, 10.8))
-            [dataR, headline] = dealdata(file, range, 2, interval, 211, 2)
+            [dataR, headline] = dealdata(file, Frange, 2, interval, 211, 2)
     if type == "R":
         dataR = dataR.T[~(dataR == 0).all(0)].T  # 去除0列
         dataR = Rtorho(dataR, abc)
+        
+        # 处理dataR：奇数列取反，偶数列不变，然后倒序插入原始数据前
+        new_dataR = dataR.copy()
+        # 奇数列（第1列）
+        new_dataR[:, 0] = -dataR[:, 0]
+        new_dataR = new_dataR[::-1]  # 倒序
+        dataR = np.vstack((new_dataR, dataR))  # 拼接
+        
         np.savetxt(workdirdata + "dealed-R.dat", dataR, fmt="%.8e", delimiter=",")
         headlinestr = "Field(T)"
         mrhead ="Field(T)"
@@ -718,6 +727,7 @@ def deal(file, range, interval, abc):
                 headlinestr = headlinestr + "," + "%.1f" % i + "K(ohm)"
             else:
                 headlinestr = headlinestr + "," + "%.1f" % i + "K(ohm cm)"
+        
             mrhead=mrhead+"," + "%.1f" % i + "K(%)"
         addheadline(headlinestr, workdirdata + "dealed-R.dat", workdirdata + "dealed-R-" + abc + ".dat")
         savesinglefile(headlinestr, dataR, "R", abc,mrhead)
@@ -734,11 +744,17 @@ def deal(file, range, interval, abc):
         mrhead = ""
         if type == "H":
             fig = plt.figure(figsize=(9.6, 10.8))
-            [datahall, headline] = dealdata(file, range, 2, interval, 211, 3)
+            [datahall, headline] = dealdata(file, Frange, 2, interval, 211, 3)
         else:
-            [datahall, headline] = dealdata(file, range, 3, interval, 222, 3)
+            [datahall, headline] = dealdata(file, Frange, 3, interval, 222, 3)
         datahall = datahall.T[~(datahall == 0).all(0)].T  # 去除0列
         datahall = Ryxtorhoyx(datahall, abc)
+        
+        # 处理datahall：所有列取反，然后倒序插入原始数据前
+        new_datahall = -datahall.copy()  # 所有列取反
+        new_datahall = new_datahall[::-1]  # 倒序
+        datahall = np.vstack((new_datahall, datahall))  # 拼接
+        
         headlinestr = "Field(T)"
         for i in headline:
             if abc == "1,1,1":
@@ -777,12 +793,12 @@ if run == 1:
     else:
         print("文件名是" + datafile[0])
         multistep=input("是否分段插值（y/n），回车默认不分段，仅支持三段插值，两个插值间隔\n")
-        range = input("输入内插范围（四位小数,单位特斯拉）,最大值即可,回车则默认为14\n需要注意：因为我们扫场一般用的No O'shot，所以最大磁场会比设定场要低一点，数据可能最后可能会跳，处理方法是将范围写低一点，例如设定5T写到4.9999\n")
-        if range == "":
-            range = 14
+        Frange = input("输入内插范围（四位小数,单位特斯拉）,最大值即可,回车则默认为14\n需要注意：因为我们扫场一般用的No O'shot，所以最大磁场会比设定场要低一点，数据可能最后可能会跳，处理方法是将范围写低一点，例如设定5T写到4.9999\n")
+        if Frange == "":
+            Frange = 14
         else:
-            range = float(range)
-        print("插值范围为0-%.4f" % range)
+            Frange = float(Frange)
+        print("插值范围为0-%.4f" % Frange)
         interval = input("输入内插间隔，回车则默认20（单位为Oe），若是分段插值，示例：4，20，100，意为对于没有loop分两段，0-4T，20间隔，4T-max，100间隔，对于有loop的则是三段，min-(-4T)，-4T-4T，4T-max,间隔为100，20，100\n")
         if multistep=="y":
             if interval == "":
@@ -793,7 +809,7 @@ if run == 1:
                 midrange=float(interval.strip().split(',')[0])
                 interval1=float(interval.strip().split(',')[1])
                 interval2 = float(interval.strip().split(',')[2])
-                intervalnumbers=int(midrange * 2 * 10000 / interval1 + 1)*2+int((range - midrange) * 2 * 10000 / interval2 + 1)-2
+                intervalnumbers=int(midrange * 2 * 10000 / interval1 + 1)*2+int((Frange - midrange) * 2 * 10000 / interval2 + 1)-2
                 print("分段插值：分段的位置为%.2d，前段(三段的中段）间隔为%.0d，后段间隔为%.0d\n"%(midrange,interval1,interval2))
                 interval=[multistep,midrange,interval1,interval2,intervalnumbers]
         else:
@@ -810,7 +826,7 @@ if run == 1:
         input("确认参数")
         abc = abc.replace("，", ",")
         # deal(datafile[0], range, interval, abc)
-        deal(datafile[0], range, interval, abc)
+        deal(datafile[0], Frange, interval, abc)
 
 if os.path.exists(workdirfit):
     datafile = [entry.path for entry in os.scandir(workdirfit) if entry.name.endswith(".dat")]
@@ -823,7 +839,7 @@ else:
     os.makedirs(workdir + "/fit", 777)
     run = 1
 if run == 1:
-    fitprocess()
+    #fitprocess()
     #fitRHprocess()
     try:
         if loop:
