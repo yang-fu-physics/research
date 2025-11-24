@@ -251,10 +251,15 @@ def fitnew(Rfile, hallfile, temp):
     figtwo.savefig(rename(workdirfit + "twoband-" + temp + "K.png"))
     return p_est
     """
+def lasthalfarray(originarray):
+    num_rows = originarray.shape[0]  # 获取行数
+    mid_row = num_rows // 2
+    output=originarray[mid_row:,:]
+    return output
 def fit(Rfile, hallfile, temp):
     """对hall数据文件和电阻数据文件拼接，并使用双带模型拟合，并对每一个温度产生一个电阻图和一个hall图"""
-    datahall = filetonumpy(hallfile)
-    dataR = filetonumpy(Rfile)
+    datahall = lasthalfarray(filetonumpy(hallfile))
+    dataR = lasthalfarray(filetonumpy(Rfile))
     #xdata = np.concatenate((dataR[:,0], datahall[:,0]))
     #ydata = np.concatenate((dataR[:,1], datahall[:,1]))
     dataR[:, 0] = -1 * dataR[:, 0]
@@ -632,7 +637,7 @@ def dealdata(name, range, lie, interval, plot, type):
         data2[row, 2] = line[lie+1]  # 数据转移至data2并处理空格
         # print(data2[row,0])
         if row > 0:
-            if abs(data2[row, 0] - data2[row - 1, 0]) > 2:  # 判读温度转变点
+            if abs(data2[row, 0] - data2[row - 1, 0]) > 1:  # 判读温度转变点
                 Tchange.append(row)
         row += 1
     data2=data2[:row,:]

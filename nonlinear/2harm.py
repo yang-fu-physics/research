@@ -96,8 +96,8 @@ if 0==0:
     if len(file) > 1:
         print("dat文件过多")
     else:
-        dealdata(file[0],1,"K",2,"")#需要更改第二项选择分隔依据，低四项是分隔标准
+        dealdata(file[0],3,"K",2,"")#需要更改第二项选择分隔依据，低四项是分隔标准
 file = [entry.path for entry in os.scandir(workdir) if entry.name.endswith("K.dat")]
 for i in file:
-    dealdata(i,42,"Hz",1,i[:-4]+"-")
+    dealdata(i,46,"Hz",1,i[:-4]+"-")
     #dealdata(i, 9, "Hz", 0.5, "")
