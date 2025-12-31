@@ -722,11 +722,14 @@ def deal(file, Frange, interval, abc):
         dataR = dataR.T[~(dataR == 0).all(0)].T  # 去除0列
         dataR = Rtorho(dataR, abc)
         
-        # 处理dataR：奇数列取反，偶数列不变，然后倒序插入原始数据前
+        # 处理dataR：第一列取反，偶数列不变，然后倒序插入原始数据前
         new_dataR = dataR.copy()
         # 奇数列（第1列）
         new_dataR[:, 0] = -dataR[:, 0]
-        new_dataR = new_dataR[::-1]  # 倒序
+        if loop==False:
+            new_dataR = new_dataR[::-1]  # 倒序
+        else:
+            new_dataR = new_dataR[::]
         dataR = np.vstack((new_dataR, dataR))  # 拼接
         
         np.savetxt(workdirdata + "dealed-R.dat", dataR, fmt="%.8e", delimiter=",")
@@ -762,8 +765,10 @@ def deal(file, Frange, interval, abc):
         
         # 处理datahall：所有列取反，然后倒序插入原始数据前
         new_datahall = -datahall.copy()  # 所有列取反
-        new_datahall = new_datahall[::-1]  # 倒序
-        #new_datahall = new_datahall[::]  # loop倒序
+        if loop==False:
+            new_datahall = new_datahall[::-1]  # 倒序
+        else:
+            new_datahall = new_datahall[::]  # loop倒序
         datahall = np.vstack((new_datahall, datahall))  # 拼接
         
         headlinestr = "Field(T)"
