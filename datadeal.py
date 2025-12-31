@@ -568,10 +568,15 @@ def spit(dataT, range, type, interval):
         if row > 0:
             dataF = dataT[row, 1] * dataT[row - 1, 1]
             if dataF <= 0:  # 判断磁场转变点，正负转换
-                Fchange.append(row)
+                if len(Fchange)!=0:
+                    if row!=Fchange[-1]+1:
+                       Fchange.append(row)
+                    else: Fchange[-1]=row
+                else: 
+                    Fchange.append(row)
         row = row + 1
     if len(Fchange) == 2:
-        print("存在loop线，需要注意是否数据有问题,按照loop线处理")
+        print("存在loop线，或多次经过零点，需要注意是否数据有问题,按照loop线处理")
         loop=True
         row = 3
         Fchange2 = []
@@ -758,6 +763,7 @@ def deal(file, Frange, interval, abc):
         # 处理datahall：所有列取反，然后倒序插入原始数据前
         new_datahall = -datahall.copy()  # 所有列取反
         new_datahall = new_datahall[::-1]  # 倒序
+        #new_datahall = new_datahall[::]  # loop倒序
         datahall = np.vstack((new_datahall, datahall))  # 拼接
         
         headlinestr = "Field(T)"
