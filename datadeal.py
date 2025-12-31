@@ -492,38 +492,48 @@ def Ryxtorhoyx(data, abc):
     return data
 
 
-def inter(m, range, type, interval):
-    """根据输入的m数据，range范围，lie霍尔或者电阻的列数用于判读是内插的y的正负，interval内插间隔"""
+def inter(m, type, intervals):
+    """根据输入的m数据，intervals列表（包含(limit, step)元组），type类型"""
     a = 1
-    if m[1, 1] < 0:  # 取第一行第一列判断是否为负值，因为为了0T的内插相同，多取了一行。
+    if m[1, 1] < 0:  # 取第一行第一列判断是否为负值
         a = -1
     u, indices = np.unique(m[:, 1], return_index=True)
     fx = interpolate.interp1d(m[indices, 1] / 10000, m[indices, 2], kind="linear",
-                              fill_value="extrapolate")  # 'linear','zero', 'slinear', 'quadratic', 'cubic'
-    if interval[0]=="y":
-        internumber1=int(interval[1] * 10000 / interval[2] + 1)
-        internumber2 = int((range-interval[1])  * 10000 / interval[3] + 1)
-        x1 = np.linspace(0, a * interval[1], internumber1)
-        x2 = np.linspace(a * interval[1], a * range, internumber2)
-        x=np.append(x1,x2[1:],axis=0)
-        internumber = internumber1 + internumber2 - 1
-    else:
-        internumber = int(range * 10000 / interval[1] + 1)
-        x = np.linspace(0, a * range, internumber)
+                              fill_value="extrapolate")
+    
+    x_segments = []
+    last_limit = 0.0
+    
+    for limit, step in intervals:
+        range_oe = (limit - last_limit) * 10000
+        num = int(range_oe / step)
+        
+        # Determine current segment points
+        # Start from last_limit, go to limit.
+        # If it's not the first segment, we skip the first point to avoid duplication
+        this_x = np.linspace(a * last_limit, a * limit, num + 1)
+        
+        if len(x_segments) > 0:
+            x_segments.append(this_x[1:])
+        else:
+            x_segments.append(this_x)
+            
+        last_limit = limit
+        
+    x = np.concatenate(x_segments)
+    internumber = x.size
+    
     intery = np.zeros([x.size, 2])
     intery[:, 0] = a * x
     if type == 3:
         intery[:, 1] = a * fx(x)
     else:
         intery[:, 1] = fx(x)
-    # plt.plot(m[:,1],m[:,2],intery[:,0],intery[:,1])
-    # plt.show()
-    # print(intery)
-    return intery,internumber
+    return intery, internumber
 
 
-def interloop(m, range, type, interval):
-    """根据输入的m数据，range范围，lie霍尔或者电阻的列数用于判读是内插的y的正负，interval内插间隔"""
+def interloop(m, type, intervals):
+    """根据输入的m数据，intervals列表，type类型"""
     a = 1
     emm=0
     while m[emm+1, 1] - m[emm, 1]==0:
@@ -532,32 +542,58 @@ def interloop(m, range, type, interval):
         a = -1
     u, indices = np.unique(m[:, 1], return_index=True)
     fx = interpolate.interp1d(m[indices, 1] / 10000, m[indices, 2], kind="linear",
-                              fill_value="extrapolate")  # 'linear','zero', 'slinear', 'quadratic', 'cubic'
-    if interval[0]=="y":
-        internumber1=int(interval[1] * 2 * 10000 / interval[2] + 1)
-        internumber2 = int((range-interval[1])  * 10000 / interval[3] + 1)
-        x1 = np.linspace(-a * range, -a * interval[1], internumber2)
-        x2 = np.linspace(-a * interval[1], a * interval[1], internumber1)
-        x3 = np.linspace(a * interval[1], a * range, internumber2)
-        x=np.append(x1,x2[1:],axis=0)
-        x=np.append(x,x3[1:],axis=0)
-        internumber=internumber1+internumber2*2-2
-    else:
-        internumber = int(range * 2 * 10000 / interval[1] + 1)
-        x = np.linspace(-a * range, a * range, internumber)
+                              fill_value="extrapolate")
+    
+    # Generate positive half first (0 to max)
+    pos_segments = []
+    last_limit = 0.0
+    
+    for limit, step in intervals:
+        range_oe = (limit - last_limit) * 10000
+        # For symmetric loop, we want intervals on both sides.
+        # Here we just generate 0 -> limit with step
+        num = int(range_oe / step)
+        
+        this_x = np.linspace(last_limit, limit, num + 1)
+        
+        if len(pos_segments) > 0:
+            pos_segments.append(this_x[1:])
+        else:
+            pos_segments.append(this_x)
+            
+        last_limit = limit
+        
+    x_pos = np.concatenate(pos_segments)
+    
+    # Mirror to get negative half: [-max, ..., 0] -> we want [-max, ..., -step]
+    # x_pos is [0, step, ..., max]
+    x_neg = -x_pos[1:][::-1] # [-max, ..., -step]
+    
+    # Concatenate: neg + pos -> [-max, ..., -step, 0, step, ..., max]
+    x_total = np.concatenate([x_neg, x_pos])
+    
+    # Apply direction 'a'
+    # If a=1 (normal), we want -max to max. x_total is -max to max. Correct.
+    # If a=-1 (descending?), user might expect range -> -range?
+    # Current code `spit` passes `range` (positive).
+    # interloop in old code:
+    # x1 = linspace(-range, -split)
+    # x3 = linspace(split, range)
+    # If a=-1, it basically flips the x axis.
+    
+    x = a * x_total
+    internumber = x.size
+
     intery = np.zeros([x.size, 2])
     intery[:, 0] = a * x
     if type == 3:
         intery[:, 1] = a * fx(x)
     else:
         intery[:, 1] = fx(x)
-    # plt.plot(m[:,1],m[:,2],intery[:,0],intery[:,1])
-    # plt.show()
-    # print(intery)
-    return intery,internumber
+    return intery, internumber
 
 
-def spit(dataT, range, type, interval):
+def spit(dataT, type, intervals):
     """将单个温度的数据进行正负场的分离，并使用inter函数，并做平均"""
     global loop
     row = 1
@@ -596,8 +632,8 @@ def spit(dataT, range, type, interval):
         a1 = dataT[:Fchange2[-1], :]
         a2 = dataT[Fchange2[-1]:, :]
         print(a1)
-        [av1,internumber1] = interloop(a1, range, type, interval)
-        [av2,internumber2]=interloop(a2, range, type, interval)
+        [av1,internumber1] = interloop(a1, type, intervals)
+        [av2,internumber2]=interloop(a2, type, intervals)
     elif len(Fchange) > 2:
         print("单个温度数据三次及以上经过零点，请检查数据")
         print(1 / 0)
@@ -606,14 +642,14 @@ def spit(dataT, range, type, interval):
         a1 = dataT[:j + 1, :]
         a2 = dataT[j - 1:, :]
         # print(a1,a2)
-        [av1,internumber1]= inter(a1, range, type, interval)
-        [av2,internumber2]=inter(a2, range, type, interval)
+        [av1,internumber1]= inter(a1, type, intervals)
+        [av2,internumber2]=inter(a2, type, intervals)
     av=(av1+av2)/2
     internumber=internumber2
     return av,internumber
 
 
-def dealdata(name, range, lie, interval, plot, type):
+def dealdata(name, lie, interval, plot, type):
     """处理数据的主体,type=2为R，type=3为hall"""
     global loop
     plt.subplot(plot)
@@ -642,7 +678,7 @@ def dealdata(name, range, lie, interval, plot, type):
         data2[row, 2] = line[lie+1]  # 数据转移至data2并处理空格
         # print(data2[row,0])
         if row > 0:
-            if abs(data2[row, 0] - data2[row - 1, 0]) > 1:  # 判读温度转变点
+            if abs(data2[row, 0] - data2[row - 1, 0]) > 10:  # 判读温度转变点
                 Tchange.append(row)
         row += 1
     data2=data2[:row,:]
@@ -657,7 +693,7 @@ def dealdata(name, range, lie, interval, plot, type):
     while True:
         if i > 0:  # 以温度为依据分段
             dataT = data2[Tchange[i - 1]:Tchange[i], :]  # dataT为每个温度的分离
-            [dataspit,internumber] = spit(dataT, range, type, interval)
+            [dataspit,internumber] = spit(dataT, type, interval)
             plt.plot(dataT[:, 1], dataT[:, 2], label="%.1f" % data2[Tchange[i - 1], 0] + "K")
             if type == 3:
                 plt.ylabel("Ryx(ohm)")
@@ -671,7 +707,7 @@ def dealdata(name, range, lie, interval, plot, type):
                 dataT = data2[:, :]
             else:
                 dataT = data2[:Tchange[i], :]
-            [dataspit,internumber]= spit(dataT, range, type, interval)
+            [dataspit,internumber]= spit(dataT, type, interval)
             if loop:
                 dataall = np.zeros([internumber, 40])
             else:
@@ -688,7 +724,7 @@ def dealdata(name, range, lie, interval, plot, type):
                 break
         if i == len(Tchange) - 1:  # 如果是最后一个点，则额外输出一个至最后的数组。并跳出循环
             dataT = data2[Tchange[i]:, :]
-            [dataspit,internumber] = spit(dataT, range, type, interval)
+            [dataspit,internumber] = spit(dataT, type, interval)
             dataall[:, 0] = dataspit[:, 0]
             dataall[:, i + 2] = dataspit[:, 1]
             plt.plot(dataT[:, 1], dataT[:, 2], label="%.1f" % data2[Tchange[i], 0] + "K")
@@ -706,18 +742,18 @@ def dealdata(name, range, lie, interval, plot, type):
     return dataall, data2[Tchange, 0]
 
 
-def deal(file, Frange, interval, abc):
+def deal(file, interval, abc):
     """处理数据的多个温度文件的储存"""
     if halltest(file):
         fig = plt.figure(figsize=(19.2, 10.8))
-        [dataR, headline] = dealdata(file, Frange, 2, interval, 221, 2)
+        [dataR, headline] = dealdata(file, 2, interval, 221, 2)
         type = "R"
     else:
         type = input("检测到只有三列数据，请输入R或者H(hall)，回车默认R\n")
         if type == "R" or type == "":
             type = "R"
             fig = plt.figure(figsize=(9.6, 10.8))
-            [dataR, headline] = dealdata(file, Frange, 2, interval, 211, 2)
+            [dataR, headline] = dealdata(file, 2, interval, 211, 2)
     if type == "R":
         dataR = dataR.T[~(dataR == 0).all(0)].T  # 去除0列
         dataR = Rtorho(dataR, abc)
@@ -757,9 +793,9 @@ def deal(file, Frange, interval, abc):
         mrhead = ""
         if type == "H":
             fig = plt.figure(figsize=(9.6, 10.8))
-            [datahall, headline] = dealdata(file, Frange, 2, interval, 211, 3)
+            [datahall, headline] = dealdata(file, 2, interval, 211, 3)
         else:
-            [datahall, headline] = dealdata(file, Frange, 3, interval, 222, 3)
+            [datahall, headline] = dealdata(file, 3, interval, 222, 3)
         datahall = datahall.T[~(datahall == 0).all(0)].T  # 去除0列
         datahall = Ryxtorhoyx(datahall, abc)
         
@@ -808,33 +844,24 @@ if run == 1:
         print("dat文件过多")
     else:
         print("文件名是" + datafile[0])
-        multistep=input("是否分段插值（y/n），回车默认不分段，仅支持三段插值，两个插值间隔\n")
-        Frange = input("输入内插范围（四位小数,单位特斯拉）,最大值即可,回车则默认为14\n需要注意：因为我们扫场一般用的No O'shot，所以最大磁场会比设定场要低一点，数据可能最后可能会跳，处理方法是将范围写低一点，例如设定5T写到4.9999\n")
-        if Frange == "":
-            Frange = 14
-        else:
-            Frange = float(Frange)
-        print("插值范围为0-%.4f" % Frange)
-        interval = input("输入内插间隔，回车则默认20（单位为Oe），若是分段插值，示例：4，20，100，意为对于没有loop分两段，0-4T，20间隔，4T-max，100间隔，对于有loop的则是三段，min-(-4T)，-4T-4T，4T-max,间隔为100，20，100\n")
-        if multistep=="y":
-            if interval == "":
-                multistep = "n"
-                interval=20
-                print("内插间隔为%.0d" % interval)
-            else:
-                midrange=float(interval.strip().split(',')[0])
-                interval1=float(interval.strip().split(',')[1])
-                interval2 = float(interval.strip().split(',')[2])
-                intervalnumbers=int(midrange * 2 * 10000 / interval1 + 1)*2+int((Frange - midrange) * 2 * 10000 / interval2 + 1)-2
-                print("分段插值：分段的位置为%.2d，前段(三段的中段）间隔为%.0d，后段间隔为%.0d\n"%(midrange,interval1,interval2))
-                interval=[multistep,midrange,interval1,interval2,intervalnumbers]
-        else:
-            if interval == "":
-                interval = 20
-            else:
-                interval = float(interval)
-            print("内插间隔为%.0d" % interval)
-            interval=[multistep,interval]
+        interval_input = input("输入内插分段，格式为'范围:间隔'，多个分段用逗号隔开 (示例: 4:20, 14:100)，回车默认14:20\n")
+        
+        if interval_input == "":
+            interval_input = "14:20"
+            
+        intervals = []
+        try:
+            segments = interval_input.replace("，", ",").strip().split(',')
+            for seg in segments:
+                limit, step = seg.strip().split(':')
+                intervals.append((float(limit), float(step)))
+            # Sort by limit ensures correct order
+            intervals.sort(key=lambda x: x[0])
+            print("内插分段为:", intervals)
+        except Exception as e:
+            print("输入格式错误，使用默认14:20")
+            intervals = [(14.0, 20.0)]
+
         abc = input("输入长宽高，逗号隔开，单位为cm，回车则皆为1，即输出为电阻\n")
         if abc == "":
             abc = "1,1,1"
@@ -842,7 +869,7 @@ if run == 1:
         input("确认参数")
         abc = abc.replace("，", ",")
         # deal(datafile[0], range, interval, abc)
-        deal(datafile[0], Frange, interval, abc)
+        deal(datafile[0], intervals, abc)
 
 if os.path.exists(workdirfit):
     datafile = [entry.path for entry in os.scandir(workdirfit) if entry.name.endswith(".dat")]
