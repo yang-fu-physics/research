@@ -829,7 +829,7 @@ def deal(file, interval, abc):
     fig.savefig("alldata.png")
 
 
-if os.path.exists(workdirdata):
+if os.path.exists(workdirdata) and os.listdir(workdirdata):
     input("已有data文件夹，如需处理原始数据请删除该文件夹重新运行程序。如需进行拟合则任意键继续")
     run = 0
 else:
