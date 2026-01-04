@@ -383,12 +383,11 @@ def fitprocess():
 
 def halltest(name):
     """通过判断初始数据列数，确认有几行数据，3列返回True"""
-    df = pd.read_csv('Sheet1.dat',sep="\t",header=None,na_values='--')
+    df = pd.read_csv(name, sep="\t", header=None, na_values='--')
     row_count, column_count = df.shape
     if column_count > 3:
         if column_count > 4:
             print("报警：数据列数不标准")
-            input("输入任意键继续或直接关闭窗口退出")
         return True
     else:
         return False
@@ -829,70 +828,305 @@ def deal(file, interval, abc):
     fig.savefig("alldata.png")
 
 
-if os.path.exists(workdirdata) and os.listdir(workdirdata):
-    input("已有data文件夹，如需处理原始数据请删除该文件夹重新运行程序。如需进行拟合则任意键继续")
-    run = 0
-else:
-    run = 1
+# ============== GUI Wrapper Functions ==============
+
+def deal_with_params(file, intervals, abc, data_type=None, show_plot=True):
+    """
+    GUI版本的deal函数，接受参数而不是input()
+    data_type: None=自动检测, "R"=电阻, "H"=霍尔
+    返回: (success, message, needs_type_input)
+    """
+    global loop
+    
+    if halltest(file):
+        fig = plt.figure(figsize=(19.2, 10.8))
+        [dataR, headline] = dealdata(file, 2, intervals, 221, 2)
+        type_val = "R"
+    else:
+        if data_type is None:
+            return (False, "检测到只有三列数据，请选择数据类型", True)
+        type_val = data_type if data_type in ["R", "H"] else "R"
+        if type_val == "R":
+            fig = plt.figure(figsize=(9.6, 10.8))
+            [dataR, headline] = dealdata(file, 2, intervals, 211, 2)
+    
+    if type_val == "R":
+        dataR = dataR.T[~(dataR == 0).all(0)].T
+        dataR = Rtorho(dataR, abc)
+        
+        new_dataR = dataR.copy()
+        new_dataR[:, 0] = -dataR[:, 0]
+        if loop == False:
+            new_dataR = new_dataR[::-1]
+        else:
+            new_dataR = new_dataR[::]
+        dataR = np.vstack((new_dataR, dataR))
+        
+        np.savetxt(workdirdata + "dealed-R.dat", dataR, fmt="%.8e", delimiter=",")
+        headlinestr = "Field(T)"
+        mrhead = "Field(T)"
+        for i in headline:
+            if abc == "1,1,1":
+                headlinestr = headlinestr + "," + "%.1f" % i + "K(ohm)"
+            else:
+                headlinestr = headlinestr + "," + "%.1f" % i + "K(ohm cm)"
+            mrhead = mrhead + "," + "%.1f" % i + "K(%)"
+        addheadline(headlinestr, workdirdata + "dealed-R.dat", workdirdata + "dealed-R-" + abc + ".dat")
+        savesinglefile(headlinestr, dataR, "R", abc, mrhead)
+        if halltest(file):
+            plt.subplot(223)
+        else:
+            plt.subplot(212)
+        if abc == "1,1,1":
+            plot(headline, dataR, "R(ohm)")
+        else:
+            plot(headline, dataR, "rho(ohm cm)")
+    
+    if halltest(file) or type_val == "H":
+        mrhead = ""
+        if type_val == "H":
+            fig = plt.figure(figsize=(9.6, 10.8))
+            [datahall, headline] = dealdata(file, 2, intervals, 211, 3)
+        else:
+            [datahall, headline] = dealdata(file, 3, intervals, 222, 3)
+        datahall = datahall.T[~(datahall == 0).all(0)].T
+        datahall = Ryxtorhoyx(datahall, abc)
+        
+        new_datahall = -datahall.copy()
+        if loop == False:
+            new_datahall = new_datahall[::-1]
+        else:
+            new_datahall = new_datahall[::]
+        datahall = np.vstack((new_datahall, datahall))
+        
+        headlinestr = "Field(T)"
+        for i in headline:
+            if abc == "1,1,1":
+                headlinestr = headlinestr + "," + "%.1f" % i + "K(ohm)"
+            else:
+                headlinestr = headlinestr + "," + "%.1f" % i + "K(ohm cm)"
+        np.savetxt(workdirdata + "dealed-hall.dat", datahall, fmt="%.8e", delimiter=",")
+        addheadline(headlinestr, workdirdata + "dealed-hall.dat", workdirdata + "dealed-hall-" + abc + ".dat")
+        if type_val == "H":
+            plt.subplot(212)
+        else:
+            plt.subplot(224)
+        if abc == "1,1,1":
+            plot(headline, datahall, "Ryx(ohm)")
+        else:
+            plot(headline, datahall, "rhoyx(ohm cm)")
+        savesinglefile(headlinestr, datahall, "hall", abc, mrhead)
+    
+    plt.tight_layout()
+    fig.savefig(workdir + "/alldata.png")
+    if show_plot:
+        plt.show()
+    plt.close(fig)
+    
+    return (True, "数据处理完成", False)
+
+
+def fitprocess_with_params(run_fit=False):
+    """GUI版本的fitprocess，接受参数控制是否拟合"""
+    if not run_fit:
+        return (True, "跳过双带拟合", [])
+    
+    fitfiles = [entry.path for entry in os.scandir(workdirdata) if "1,1,1" in entry.name]
+    warning_msg = ""
+    if fitfiles != []:
+        warning_msg = "警告：由于dealed-hall-1,1,1.dat存在，认为没有进行ohm至ohm cm的计算，不推荐进行拟合计算"
+    
+    fitfile = open(workdirfit + "twobandfit.dat", "w+")
+    fitfile.write("Temp(K),ne(cm^-3),nh(cm^-3),miue(cm^2/(s*V)),miuh(cm^2/(s*V)),ne Confidence intervals(cm^-3),nh Confidence intervals(cm^-3),miue Confidence intervals(cm^2/(s*V)),miuh Confidence intervals(cm^2/(s*V))\n")
+    fitfile.close()
+    
+    Rfitfiles = relist([entry.path for entry in os.scandir(workdir + "\\data") if "K" in entry.name and "R" in entry.name])
+    Rfitfiles = relist2(Rfitfiles, 2, -5)
+    hallfitfiles = relist([entry.path for entry in os.scandir(workdir + "\\data") if "K" in entry.name and "hall" in entry.name])
+    hallfitfiles = relist2(hallfitfiles, 5, -5)
+    
+    Rnums = len(Rfitfiles)
+    hallnums = len(hallfitfiles)
+    
+    if Rnums != hallnums or Rnums == 0 or hallnums == 0:
+        return (False, "data文件夹数据文件不正确，一般是由于只有R或者只有hall", [])
+    
+    num = 0
+    arg = np.zeros([Rnums, 5])
+    generated_files = []
+    
+    try:
+        while True:
+            line = Rfitfiles[num].strip().split("-")
+            line = line[-1].strip().split('K')
+            arg[num, 1:] = fit(Rfitfiles[num], hallfitfiles[num], line[0])
+            generated_files.append(workdirfit + "twoband-" + line[0] + "K.png")
+            num = num + 1
+            if num == Rnums:
+                break
+    except Exception as error:
+        return (False, f"拟合过程出错: {error}", generated_files)
+    
+    return (True, warning_msg if warning_msg else "双带拟合完成", generated_files)
+
+
+def fitRHprocess_with_params(run_fit=False, fit_range=(0, 14)):
+    """GUI版本的fitRHprocess，接受参数控制是否拟合和拟合范围"""
+    if not run_fit:
+        return (True, "跳过RH拟合", [])
+    
+    low, high = fit_range
+    
+    fitfile = open(workdirfit + "fitRH.dat", "w+")
+    fitfile.write("Temp(K),RH(cm^3/C),intercept(ohm cm),Correlation coefficien,Carrier concentration(cm^-3),carrier mobility(cm^2/(s*V))\n")
+    fitfile.close()
+    
+    fitfiles = relist([entry.path for entry in os.scandir(workdir + "/data") if "K" in entry.name and "hall" in entry.name])
+    fitfiles = relist2(fitfiles, 5, -5)
+    fitfilesR = relist([entry.path for entry in os.scandir(workdir + "/data") if "K" in entry.name and "R" in entry.name])
+    fitfilesR = relist2(fitfilesR, 2, -5)
+    
+    if fitfiles == []:
+        return (False, "没有hall文件", [])
+    
+    nums = len(fitfiles)
+    if nums == 0:
+        return (False, "没有需要的hall文件", [])
+    
+    num = 0
+    arg = np.zeros([nums, 4])
+    generated_files = []
+    
+    while True:
+        line = fitfiles[num].strip().split("-")
+        line = line[-1].strip().split('K')
+        if fitfilesR == []:
+            arg[num, 1:] = fitRH(fitfiles[num], "", line[0], low, high)
+        else:
+            arg[num, 1:] = fitRH(fitfiles[num], fitfilesR[num], line[0], low, high)
+        generated_files.append(workdirfit + "RH-" + line[0] + "K.png")
+        arg[num, 0] = line[0]
+        num = num + 1
+        if num == nums:
+            break
+    
+    return (True, "RH拟合完成", generated_files)
+
+
+def get_data_files():
+    """获取工作目录下的dat文件列表"""
+    return [entry.path for entry in os.scandir(workdir) if entry.name.endswith(".dat")]
+
+
+def check_data_folder():
+    """检查data文件夹状态"""
+    if os.path.exists(workdirdata) and os.listdir(workdirdata):
+        return True
+    return False
+
+
+def check_fit_folder():
+    """检查fit文件夹状态"""
+    if os.path.exists(workdirfit):
+        datafile = [entry.path for entry in os.scandir(workdirfit) if entry.name.endswith(".dat")]
+        if datafile != []:
+            return True
+    return False
+
+
+def ensure_folders():
+    """确保必要的文件夹存在"""
     try:
         os.makedirs(workdir + "/data", 777)
-    except Exception as result:
+    except:
         pass
-if run == 1:
-    datafile = [entry.path for entry in os.scandir(workdir) if entry.name.endswith(".dat")]
-    if len(datafile) > 1:
-        print("dat文件过多")
-    else:
-        print("文件名是" + datafile[0])
-        interval_input = input("输入内插分段，格式为'范围:间隔'，多个分段用逗号隔开 (示例: 4:20, 14:100)，回车默认14:20\n")
-        
-        if interval_input == "":
-            interval_input = "14:20"
-            
-        intervals = []
-        try:
-            segments = interval_input.replace("，", ",").strip().split(',')
-            for seg in segments:
-                limit, step = seg.strip().split(':')
-                intervals.append((float(limit), float(step)))
-            # Sort by limit ensures correct order
-            intervals.sort(key=lambda x: x[0])
-            print("内插分段为:", intervals)
-        except Exception as e:
-            print("输入格式错误，使用默认14:20")
-            intervals = [(14.0, 20.0)]
+    try:
+        os.makedirs(workdir + "/fit", 777)
+    except:
+        pass
 
-        abc = input("输入长宽高，逗号隔开，单位为cm，回车则皆为1，即输出为电阻\n")
-        if abc == "":
-            abc = "1,1,1"
-        print("长宽高分别为" + abc)
-        input("确认参数")
-        abc = abc.replace("，", ",")
-        # deal(datafile[0], range, interval, abc)
-        deal(datafile[0], intervals, abc)
 
-if os.path.exists(workdirfit):
-    datafile = [entry.path for entry in os.scandir(workdirfit) if entry.name.endswith(".dat")]
-    if datafile != []:
-        input("fit文件夹已有数据，如需分析请删除fit文件夹重新运行程序。")
+def parse_intervals(interval_input):
+    """解析内插分段输入"""
+    if interval_input == "":
+        interval_input = "14:20"
+    
+    intervals = []
+    try:
+        segments = interval_input.replace("，", ",").strip().split(',')
+        for seg in segments:
+            limit, step = seg.strip().split(':')
+            intervals.append((float(limit), float(step)))
+        intervals.sort(key=lambda x: x[0])
+    except:
+        intervals = [(14.0, 20.0)]
+    
+    return intervals
+
+
+# ============== Main Execution ==============
+
+if __name__ == "__main__":
+    if os.path.exists(workdirdata) and os.listdir(workdirdata):
+        input("已有data文件夹，如需处理原始数据请删除该文件夹重新运行程序。如需进行拟合则任意键继续")
         run = 0
     else:
         run = 1
-else:
-    os.makedirs(workdir + "/fit", 777)
-    run = 1
-if run == 1:
-    #fitprocess()
-    #fitRHprocess()
+        try:
+            os.makedirs(workdir + "/data", 777)
+        except Exception as result:
+            pass
+    if run == 1:
+        datafile = [entry.path for entry in os.scandir(workdir) if entry.name.endswith(".dat")]
+        if len(datafile) > 1:
+            print("dat文件过多")
+        else:
+            print("文件名是" + datafile[0])
+            interval_input = input("输入内插分段，格式为'范围:间隔'，多个分段用逗号隔开 (示例: 4:20, 14:100)，回车默认14:20\n")
+            
+            if interval_input == "":
+                interval_input = "14:20"
+                
+            intervals = []
+            try:
+                segments = interval_input.replace("，", ",").strip().split(',')
+                for seg in segments:
+                    limit, step = seg.strip().split(':')
+                    intervals.append((float(limit), float(step)))
+                intervals.sort(key=lambda x: x[0])
+                print("内插分段为:", intervals)
+            except Exception as e:
+                print("输入格式错误，使用默认14:20")
+                intervals = [(14.0, 20.0)]
+
+            abc = input("输入长宽高，逗号隔开，单位为cm，回车则皆为1，即输出为电阻\n")
+            if abc == "":
+                abc = "1,1,1"
+            print("长宽高分别为" + abc)
+            input("确认参数")
+            abc = abc.replace("，", ",")
+            deal(datafile[0], intervals, abc)
+
+    if os.path.exists(workdirfit):
+        datafile = [entry.path for entry in os.scandir(workdirfit) if entry.name.endswith(".dat")]
+        if datafile != []:
+            input("fit文件夹已有数据，如需分析请删除fit文件夹重新运行程序。")
+            run = 0
+        else:
+            run = 1
+    else:
+        os.makedirs(workdir + "/fit", 777)
+        run = 1
+    if run == 1:
+        try:
+            if loop:
+                print("对于有loop的数据不建议使用双带拟合")
+            fitprocess()
+            fitRHprocess()
+        except Exception as error:
+            print(error)
     try:
-        if loop:
-            print("对于有loop的数据不建议使用双带拟合")
-        fitprocess()
-        fitRHprocess()
+        os.removedirs(workdirfit)
     except Exception as error:
-        print(error)
-try:
-    os.removedirs(workdirfit)
-except Exception as error:
-    pass
-input("by fuyang ヽ(°∀°)ﾉ  \n 按任意键结束")
+        pass
+    input("by fuyang ヽ(°∀°)ﾉ  \n 按任意键结束")
