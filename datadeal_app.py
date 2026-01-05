@@ -11,6 +11,7 @@ import sys
 import shutil
 import zipfile
 import io
+import json
 from datetime import datetime
 from pathlib import Path
 
@@ -21,6 +22,9 @@ sys.path.insert(0, str(script_dir))
 
 # 导入datadeal模块
 import datadeal
+
+# 配置文件路径
+CONFIG_FILE = os.path.join(datadeal.workdir, "datadeal_config.json")
 
 # 页面配置
 st.set_page_config(
@@ -75,6 +79,41 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+# ============== Config File Functions ==============
+
+def save_config(config_data):
+    """保存配置到JSON文件"""
+    config_data['last_updated'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    with open(CONFIG_FILE, 'w', encoding='utf-8') as f:
+        json.dump(config_data, f, ensure_ascii=False, indent=2)
+    return True
+
+def load_config():
+    """加载上次的配置"""
+    if os.path.exists(CONFIG_FILE):
+        try:
+            with open(CONFIG_FILE, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except:
+            return None
+    return None
+
+def get_default_config():
+    """获取默认配置"""
+    return {
+        'interval_input': '14:20',
+        'length': 1.0,
+        'width': 1.0,
+        'height': 1.0,
+        'data_type': 'R',
+        'run_twoband': True,
+        'run_rh': True,
+        'rh_low': 0.0,
+        'rh_high': 14.0,
+        'data_file': '',
+        'last_updated': ''
+    }
+
 # 初始化session state
 if 'step' not in st.session_state:
     st.session_state.step = 1
@@ -86,6 +125,8 @@ if 'needs_type_input' not in st.session_state:
     st.session_state.needs_type_input = False
 if 'messages' not in st.session_state:
     st.session_state.messages = []
+if 'config_loaded' not in st.session_state:
+    st.session_state.config_loaded = False
 
 def add_message(msg, msg_type="info"):
     """添加消息到消息列表"""
@@ -110,6 +151,7 @@ def reset_state():
     st.session_state.fitting_done = False
     st.session_state.needs_type_input = False
     st.session_state.messages = []
+    st.session_state.config_loaded = False
 
 def get_dat_files_in_workdir():
     """获取工作目录下的所有.dat文件"""
@@ -140,7 +182,7 @@ def clear_fit_folder():
     return False
 
 def create_results_zip():
-    """创建包含data/, fit/, alldata.png的zip文件"""
+    """创建包含data/, fit/, alldata.png, config.json的zip文件"""
     zip_buffer = io.BytesIO()
     
     with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
@@ -164,9 +206,14 @@ def create_results_zip():
         alldata_path = os.path.join(datadeal.workdir, "alldata.png")
         if os.path.exists(alldata_path):
             zip_file.write(alldata_path, "alldata.png")
+        
+        # 添加配置文件
+        if os.path.exists(CONFIG_FILE):
+            zip_file.write(CONFIG_FILE, "datadeal_config.json")
     
     # 返回bytes而不是BytesIO对象
     return zip_buffer.getvalue()
+
 
 # 主标题
 st.markdown('<h1 class="main-header">📊 Datadeal 数据处理工具</h1>', unsafe_allow_html=True)
@@ -349,15 +396,43 @@ with col1:
     elif st.session_state.step == 2:
         st.subheader("⚙️ Step 2: 配置处理参数")
         
+        # 加载上次配置
+        saved_config = load_config()
+        if saved_config and not st.session_state.config_loaded:
+            st.session_state.config_loaded = True
+            st.info(f"💾 发现上次配置 (更新于: {saved_config.get('last_updated', '未知')})")
+        
         st.info(f"📄 数据文件: **{os.path.basename(st.session_state.get('selected_file', ''))}**")
+        
+        # 加载配置按钮 - 直接设置widget的session_state值
+        if saved_config:
+            if st.button("📂 加载上次配置", use_container_width=True):
+                # 直接设置各个widget的key值
+                st.session_state.interval_input_field = saved_config.get('interval_input', '14:20')
+                st.session_state.length_field = float(saved_config.get('length', 1.0))
+                st.session_state.width_field = float(saved_config.get('width', 1.0))
+                st.session_state.height_field = float(saved_config.get('height', 1.0))
+                st.success("✅ 配置已加载！")
+                st.rerun()
+        
+        # 初始化widget默认值（如果还没有设置）
+        # 优先使用保存的值（从Step 3返回时）
+        if 'interval_input_field' not in st.session_state:
+            st.session_state.interval_input_field = st.session_state.get('saved_interval', '14:20')
+        if 'length_field' not in st.session_state:
+            st.session_state.length_field = st.session_state.get('saved_length', 1.0)
+        if 'width_field' not in st.session_state:
+            st.session_state.width_field = st.session_state.get('saved_width', 1.0)
+        if 'height_field' not in st.session_state:
+            st.session_state.height_field = st.session_state.get('saved_height', 1.0)
         
         # 内插分段
         st.markdown("### 📐 内插分段设置")
         interval_input = st.text_input(
             "格式: '范围:间隔'，多个分段用逗号隔开",
-            value="14:20",
             placeholder="示例: 4:20, 14:100",
-            help="例如 '4:20' 表示在0-4T范围内使用20Oe的间隔"
+            help="例如 '4:20' 表示在0-4T范围内使用20Oe的间隔",
+            key="interval_input_field"
         )
         
         # 解析并显示
@@ -368,11 +443,11 @@ with col1:
         st.markdown("### 📏 样品尺寸 (cm)")
         col_l, col_w, col_h = st.columns(3)
         with col_l:
-            length = st.number_input("长度 L", value=1.0, min_value=0.001, format="%.4f")
+            length = st.number_input("长度 L", min_value=0.001, format="%.4f", key="length_field")
         with col_w:
-            width = st.number_input("宽度 W", value=1.0, min_value=0.001, format="%.4f")
+            width = st.number_input("宽度 W", min_value=0.001, format="%.4f", key="width_field")
         with col_h:
-            height = st.number_input("高度 H", value=1.0, min_value=0.001, format="%.4f")
+            height = st.number_input("高度 H", min_value=0.001, format="%.4f", key="height_field")
         
         abc = f"{length},{width},{height}"
         
@@ -385,9 +460,10 @@ with col1:
         if st.session_state.needs_type_input:
             st.markdown("### 📊 数据类型选择")
             st.warning("⚠️ 检测到只有三列数据，请选择数据类型")
+            data_type_options = ["R (电阻)", "H (霍尔)"]
             data_type = st.radio(
                 "选择数据类型:",
-                ["R (电阻)", "H (霍尔)"],
+                data_type_options,
                 horizontal=True
             )
             st.session_state.data_type = "R" if "R" in data_type else "H"
@@ -403,6 +479,24 @@ with col1:
             if st.button("🚀 开始处理", use_container_width=True, type="primary"):
                 st.session_state.intervals = intervals
                 st.session_state.abc = abc
+                
+                # 保存当前输入值到session_state（用于在返回时恢复）
+                st.session_state.saved_interval = interval_input
+                st.session_state.saved_length = length
+                st.session_state.saved_width = width
+                st.session_state.saved_height = height
+                
+                # 保存配置
+                config_to_save = {
+                    'interval_input': interval_input,
+                    'length': length,
+                    'width': width,
+                    'height': height,
+                    'data_type': st.session_state.get('data_type', 'R'),
+                    'data_file': os.path.basename(st.session_state.get('selected_file', ''))
+                }
+                save_config(config_to_save)
+                
                 st.session_state.step = 3
                 st.rerun()
     
@@ -423,6 +517,8 @@ with col1:
                 
                 if needs_type:
                     st.session_state.needs_type_input = True
+                    # 保留当前输入的值，不要重置
+                    # 这些值已经在 session_state 中了，通过 key 参数
                     st.session_state.step = 2
                     st.rerun()
                 elif success:
@@ -455,28 +551,46 @@ with col1:
                 add_message("fit文件夹已清除", "success")
                 st.rerun()
         
+        # 加载配置
+        saved_config = load_config()
+        default_config = get_default_config()
+        if saved_config:
+            default_config.update(saved_config)
+        
         st.markdown("### 🔬 拟合选项")
         
         # 双带拟合
-        run_twoband = st.checkbox("执行双带拟合", value=True)
+        run_twoband = st.checkbox("执行双带拟合", value=default_config.get('run_twoband', True), key="run_twoband_cb")
         
         if datadeal.loop:
             st.warning("⚠️ 检测到loop数据，不建议使用双带拟合")
         
         # RH拟合
-        run_rh = st.checkbox("执行RH线性拟合", value=True)
+        run_rh = st.checkbox("执行RH线性拟合", value=default_config.get('run_rh', True), key="run_rh_cb")
         
         if run_rh:
             st.markdown("#### RH拟合范围")
             col_low, col_high = st.columns(2)
             with col_low:
-                rh_low = st.number_input("下限 (T)", value=0.0, min_value=0.0)
+                rh_low = st.number_input("下限 (T)", value=float(default_config.get('rh_low', 0.0)), min_value=0.0, key="rh_low_field")
             with col_high:
-                rh_high = st.number_input("上限 (T)", value=14.0, min_value=0.0)
+                rh_high = st.number_input("上限 (T)", value=float(default_config.get('rh_high', 14.0)), min_value=0.0, key="rh_high_field")
+        else:
+            rh_low, rh_high = 0.0, 14.0
         
         st.markdown("---")
         
         if st.button("🚀 开始拟合", use_container_width=True, type="primary"):
+            # 保存拟合配置
+            config_to_update = load_config() or get_default_config()
+            config_to_update.update({
+                'run_twoband': run_twoband,
+                'run_rh': run_rh,
+                'rh_low': rh_low,
+                'rh_high': rh_high
+            })
+            save_config(config_to_update)
+            
             with st.spinner("正在进行拟合分析..."):
                 results = []
                 
