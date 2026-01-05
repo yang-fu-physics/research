@@ -443,11 +443,11 @@ with col1:
         st.markdown("### 📏 样品尺寸 (cm)")
         col_l, col_w, col_h = st.columns(3)
         with col_l:
-            length = st.number_input("长度 L", min_value=0.001, format="%.4f", key="length_field")
+            length = st.number_input("长度 L", min_value=0.000001, format="%.6f", key="length_field")
         with col_w:
-            width = st.number_input("宽度 W", min_value=0.001, format="%.4f", key="width_field")
+            width = st.number_input("宽度 W", min_value=0.000001, format="%.6f", key="width_field")
         with col_h:
-            height = st.number_input("高度 H", min_value=0.001, format="%.4f", key="height_field")
+            height = st.number_input("高度 H", min_value=0.000001, format="%.6f", key="height_field")
         
         abc = f"{length},{width},{height}"
         

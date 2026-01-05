@@ -383,11 +383,12 @@ def fitprocess():
 
 def halltest(name):
     """通过判断初始数据列数，确认有几行数据，3列返回True"""
-    df = pd.read_csv(name, sep="\t", header=None, na_values='--')
+    df = pd.read_csv('Sheet1.dat',sep="\t",header=None,na_values='--')
     row_count, column_count = df.shape
     if column_count > 3:
         if column_count > 4:
             print("报警：数据列数不标准")
+            input("输入任意键继续或直接关闭窗口退出")
         return True
     else:
         return False
@@ -1130,3 +1131,4 @@ if __name__ == "__main__":
     except Exception as error:
         pass
     input("by fuyang ヽ(°∀°)ﾉ  \n 按任意键结束")
+
