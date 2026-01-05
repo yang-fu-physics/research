@@ -506,7 +506,7 @@ def inter(m, type, intervals):
     
     for limit, step in intervals:
         range_oe = (limit - last_limit) * 10000
-        num = int(range_oe / step)
+        num = round(range_oe / step)  # 使用round避免浮点精度问题
         
         # Determine current segment points
         # Start from last_limit, go to limit.
@@ -552,7 +552,7 @@ def interloop(m, type, intervals):
         range_oe = (limit - last_limit) * 10000
         # For symmetric loop, we want intervals on both sides.
         # Here we just generate 0 -> limit with step
-        num = int(range_oe / step)
+        num = round(range_oe / step)  # 使用round避免浮点精度问题
         
         this_x = np.linspace(last_limit, limit, num + 1)
         
