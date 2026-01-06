@@ -12,8 +12,10 @@ import shutil
 import zipfile
 import io
 import json
+from io import StringIO
 from datetime import datetime
 from pathlib import Path
+from contextlib import contextmanager
 
 # 设置工作目录并导入datadeal
 script_dir = Path(__file__).parent.resolve()
@@ -22,6 +24,19 @@ sys.path.insert(0, str(script_dir))
 
 # 导入datadeal模块
 import datadeal
+
+# ============== Log Capture ==============
+
+@contextmanager
+def capture_stdout():
+    """捕获stdout输出的上下文管理器"""
+    old_stdout = sys.stdout
+    sys.stdout = StringIO()
+    try:
+        yield sys.stdout
+    finally:
+        sys.stdout = old_stdout
+
 
 # 配置文件路径
 CONFIG_FILE = os.path.join(datadeal.workdir, "datadeal_config.json")
@@ -127,6 +142,8 @@ if 'messages' not in st.session_state:
     st.session_state.messages = []
 if 'config_loaded' not in st.session_state:
     st.session_state.config_loaded = False
+if 'log_output' not in st.session_state:
+    st.session_state.log_output = ""
 
 def add_message(msg, msg_type="info"):
     """添加消息到消息列表"""
@@ -507,13 +524,22 @@ with col1:
         with st.spinner("正在处理数据，请稍候..."):
             try:
                 data_type = st.session_state.get('data_type', None)
-                success, msg, needs_type = datadeal.deal_with_params(
-                    st.session_state.selected_file,
-                    st.session_state.intervals,
-                    st.session_state.abc,
-                    data_type=data_type,
-                    show_plot=False
-                )
+                
+                # 捕获stdout输出到日志
+                with capture_stdout() as captured:
+                    success, msg, needs_type = datadeal.deal_with_params(
+                        st.session_state.selected_file,
+                        st.session_state.intervals,
+                        st.session_state.abc,
+                        data_type=data_type,
+                        show_plot=False
+                    )
+                
+                # 追加日志
+                log_content = captured.getvalue()
+                if log_content:
+                    timestamp = datetime.now().strftime("%H:%M:%S")
+                    st.session_state.log_output += f"\n[{timestamp}] === 数据处理 ===\n{log_content}"
                 
                 if needs_type:
                     st.session_state.needs_type_input = True
@@ -596,15 +622,25 @@ with col1:
                 
                 # 双带拟合
                 if run_twoband:
-                    success, msg, files = datadeal.fitprocess_with_params(run_fit=True)
+                    with capture_stdout() as captured:
+                        success, msg, files = datadeal.fitprocess_with_params(run_fit=True)
+                    log_content = captured.getvalue()
+                    if log_content:
+                        timestamp = datetime.now().strftime("%H:%M:%S")
+                        st.session_state.log_output += f"\n[{timestamp}] === 双带拟合 ===\n{log_content}"
                     results.append(("双带拟合", success, msg, files))
                 
                 # RH拟合
                 if run_rh:
-                    success, msg, files = datadeal.fitRHprocess_with_params(
-                        run_fit=True, 
-                        fit_range=(rh_low, rh_high)
-                    )
+                    with capture_stdout() as captured:
+                        success, msg, files = datadeal.fitRHprocess_with_params(
+                            run_fit=True, 
+                            fit_range=(rh_low, rh_high)
+                        )
+                    log_content = captured.getvalue()
+                    if log_content:
+                        timestamp = datetime.now().strftime("%H:%M:%S")
+                        st.session_state.log_output += f"\n[{timestamp}] === RH拟合 ===\n{log_content}"
                     results.append(("RH拟合", success, msg, files))
                 
                 # 显示结果
@@ -637,7 +673,28 @@ with col1:
             st.success("🎉 处理完成！使用左侧边栏的「下载结果」按钮可打包下载所有结果。")
 
 with col2:
-    # 右侧显示生成的图像
+    # 右侧显示日志和图像
+    st.subheader("📋 处理日志")
+    
+    # 显示日志输出
+    if st.session_state.log_output:
+        st.text_area(
+            "程序输出",
+            value=st.session_state.log_output,
+            height=300,
+            key="log_display",
+            disabled=True
+        )
+    else:
+        st.info("暂无日志输出")
+    
+    # 清除日志按钮
+    if st.session_state.log_output:
+        if st.button("🗑️ 清除日志", use_container_width=True):
+            st.session_state.log_output = ""
+            st.rerun()
+    
+    st.markdown("---")
     st.subheader("🖼️ 生成图像")
     
     # 显示alldata.png（如果存在）
@@ -656,3 +713,4 @@ with col2:
                     st.image(img_path)
             if len(png_files) > 5:
                 st.caption(f"还有 {len(png_files) - 5} 个图像未显示...")
+
