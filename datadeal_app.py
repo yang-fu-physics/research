@@ -122,7 +122,7 @@ def get_default_config():
         'width': 1.0,
         'height': 1.0,
         'data_type': 'R',
-        'run_twoband': True,
+        'run_twoband': False,
         'run_rh': True,
         'rh_low': 0.0,
         'rh_high': 14.0,
@@ -447,7 +447,7 @@ with col1:
         # 内插分段
         st.markdown("### 📐 内插分段设置")
         interval_input = st.text_input(
-            "格式: '范围:间隔'，多个分段用逗号隔开",
+            "格式: '范围:间隔'，多个分段用逗号隔开, 例如 '4:20' 表示在0-4T范围内使用20Oe的间隔",
             placeholder="示例: 4:20, 14:100",
             help="例如 '4:20' 表示在0-4T范围内使用20Oe的间隔",
             key="interval_input_field"
@@ -461,11 +461,11 @@ with col1:
         st.markdown("### 📏 样品尺寸 (cm)")
         col_l, col_w, col_h = st.columns(3)
         with col_l:
-            length = st.number_input("长度 L", min_value=0.000001, format="%.6f", key="length_field")
+            length = st.number_input("长度 L(cm)", min_value=0.000001, format="%.6f", key="length_field")
         with col_w:
-            width = st.number_input("宽度 W", min_value=0.000001, format="%.6f", key="width_field")
+            width = st.number_input("宽度 W(cm)", min_value=0.000001, format="%.6f", key="width_field")
         with col_h:
-            height = st.number_input("高度 H", min_value=0.000001, format="%.6f", key="height_field")
+            height = st.number_input("高度 H(cm)", min_value=0.000001, format="%.6f", key="height_field")
         
         abc = f"{length},{width},{height}"
         
@@ -591,7 +591,7 @@ with col1:
         st.markdown("### 🔬 拟合选项")
         
         # 双带拟合
-        run_twoband = st.checkbox("执行双带拟合", value=default_config.get('run_twoband', True), key="run_twoband_cb")
+        run_twoband = st.checkbox("执行双带拟合", value=default_config.get('run_twoband', False), key="run_twoband_cb")
         
         if datadeal.loop:
             st.warning("⚠️ 检测到loop数据，不建议使用双带拟合")
