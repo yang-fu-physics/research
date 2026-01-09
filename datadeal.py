@@ -611,7 +611,14 @@ def spit(dataT, type, intervals):
                 else: 
                     Fchange.append(row)
         row = row + 1
-    if len(Fchange) == 2:
+    
+    # 处理 Fchange 为空的情况（数据没有经过零点，只有正场或只有负场）
+    if len(Fchange) == 0:
+        print("警告：该温度数据没有经过零点，只有单边磁场数据")
+        # 只有单边数据，直接使用 inter 处理整个数据
+        [av, internumber] = inter(dataT, type, intervals)
+        return av, internumber
+    elif len(Fchange) == 2:
         print("存在loop线，或多次经过零点，需要注意是否数据有问题,按照loop线处理")
         loop=True
         row = 3
@@ -690,6 +697,8 @@ def dealdata(name, lie, interval, plot, type):
     print(rows-a)"""
     # print(Fchange)
     i = 0  # 数据以温度未根据进行的分组
+    first_internumber = None  # 记录第一个温度的 internumber
+    dataall = None
     while True:
         if i > 0:  # 以温度为依据分段
             dataT = data2[Tchange[i - 1]:Tchange[i], :]  # dataT为每个温度的分离
@@ -700,6 +709,23 @@ def dealdata(name, lie, interval, plot, type):
             else:
                 plt.ylabel("R(ohm)")
             plt.xlabel("Field(Oe)")
+            
+            # 检查 internumber 是否一致
+            if internumber != first_internumber:
+                print(f"警告：温度 {data2[Tchange[i - 1], 0]:.1f}K 的插值点数 ({internumber}) 与第一个温度 ({first_internumber}) 不一致")
+                # 调整数据大小以匹配
+                if internumber < first_internumber:
+                    # 需要扩展 dataspit
+                    new_dataspit = np.zeros((first_internumber, 2))
+                    new_dataspit[:internumber, :] = dataspit
+                    # 使用最后一个值填充剩余部分
+                    new_dataspit[internumber:, 0] = dataspit[-1, 0]
+                    new_dataspit[internumber:, 1] = dataspit[-1, 1]
+                    dataspit = new_dataspit
+                else:
+                    # 需要截断 dataspit
+                    dataspit = dataspit[:first_internumber, :]
+            
             dataall[:, 0] = dataspit[:, 0]
             dataall[:, i + 1] = dataspit[:, 1]
         else:  # 第一组则取0：。
@@ -708,6 +734,7 @@ def dealdata(name, lie, interval, plot, type):
             else:
                 dataT = data2[:Tchange[i], :]
             [dataspit,internumber]= spit(dataT, type, interval)
+            first_internumber = internumber  # 记录第一个温度的 internumber
             if loop:
                 dataall = np.zeros([internumber, 40])
             else:
@@ -725,6 +752,19 @@ def dealdata(name, lie, interval, plot, type):
         if i == len(Tchange) - 1:  # 如果是最后一个点，则额外输出一个至最后的数组。并跳出循环
             dataT = data2[Tchange[i]:, :]
             [dataspit,internumber] = spit(dataT, type, interval)
+            
+            # 检查 internumber 是否一致
+            if internumber != first_internumber:
+                print(f"警告：最后一个温度的插值点数 ({internumber}) 与第一个温度 ({first_internumber}) 不一致")
+                if internumber < first_internumber:
+                    new_dataspit = np.zeros((first_internumber, 2))
+                    new_dataspit[:internumber, :] = dataspit
+                    new_dataspit[internumber:, 0] = dataspit[-1, 0]
+                    new_dataspit[internumber:, 1] = dataspit[-1, 1]
+                    dataspit = new_dataspit
+                else:
+                    dataspit = dataspit[:first_internumber, :]
+            
             dataall[:, 0] = dataspit[:, 0]
             dataall[:, i + 2] = dataspit[:, 1]
             plt.plot(dataT[:, 1], dataT[:, 2], label="%.1f" % data2[Tchange[i], 0] + "K")

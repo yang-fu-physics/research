@@ -12,6 +12,7 @@ import shutil
 import zipfile
 import io
 import json
+import traceback
 from io import StringIO
 from datetime import datetime
 from pathlib import Path
@@ -557,7 +558,11 @@ with col1:
                     st.session_state.step = 2
                     st.rerun()
             except Exception as e:
-                add_message(f"处理出错: {e}", "error")
+                error_details = traceback.format_exc()
+                add_message(f"处理出错: {e}\n\n详细信息:\n{error_details}", "error")
+                # 同时输出到日志区域
+                timestamp = datetime.now().strftime("%H:%M:%S")
+                st.session_state.log_output += f"\n[{timestamp}] === 错误 ===\n{error_details}"
                 st.session_state.step = 2
                 st.rerun()
     
