@@ -636,7 +636,7 @@ def spit(dataT, type, intervals):
             print("升")
         else:
             Fchange2 = [np.argmin(dataT[:, 1])]
-        a1 = dataT[:Fchange2[-1], :]
+        a1 = dataT[:Fchange2[-1]+1, :]
         a2 = dataT[Fchange2[-1]:, :]
         print(a1)
         [av1,internumber1] = interloop(a1, type, intervals)
