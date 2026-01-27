@@ -1,9 +1,13 @@
 {
-  "interval_input": "0.1:50,0.3:100,1:500,9:1000",
-  "length": 1.0,
-  "width": 1.0,
-  "height": 0.0156,
-  "data_type": "H",
+  "interval_input": "9:50",
+  "length": 0.06,
+  "width": 0.05,
+  "height": 0.001,
+  "data_type": "R",
   "data_file": "Sheet1.dat",
-  "last_updated": "2026-01-10 17:40:37"
+  "last_updated": "2026-01-27 12:27:32",
+  "run_twoband": false,
+  "run_rh": true,
+  "rh_low": 0.0,
+  "rh_high": 9.0
 }

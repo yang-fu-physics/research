@@ -279,7 +279,7 @@ def fit(Rfile, hallfile, temp):
         #return function(x, ne, nh, miue, miuh) * weights
     try:
         #p_est, err_est = curve_fit(weighted_func, xdata, ydata)
-        p_est, err_est = curve_fit(function, data[:, 0], data[:, 1], [1E26,1E26,1,1],maxfev=1500)#如果这里跑飞，则是需要添加初值列表，在括号中的最后即可。
+        p_est, err_est = curve_fit(function, data[:, 0], data[:, 1],maxfev=1500)#如果这里跑飞，则是需要添加初值列表，在括号中的最后即可。
     except RuntimeError:
         p_est = np.array([0, 0, 0, 0])
         print(temp + "K拟合失败")
@@ -454,6 +454,8 @@ def savesinglefile(headlines, data, type, abc, mrhead):
     if type == "R":
         np.savetxt("tmp.dat", MRall, fmt="%.8e", delimiter=",")
         addheadline(mrhead, "tmp.dat", workdirdata + "MRall.dat")
+        return MRall
+    return None
 
 
 def Rtorho(data, abc):
@@ -685,7 +687,7 @@ def dealdata(name, lie, interval, plot, type):
         data2[row, 2] = line[lie+1]  # 数据转移至data2并处理空格
         # print(data2[row,0])
         if row > 0:
-            if abs(data2[row, 0] - data2[row - 1, 0]) > 10:  # 判读温度转变点
+            if abs(data2[row, 0] - data2[row - 1, 0]) > 0.5:  # 判读温度转变点
                 Tchange.append(row)
         row += 1
     data2=data2[:row,:]
@@ -819,15 +821,18 @@ def deal(file, interval, abc):
         
             mrhead=mrhead+"," + "%.1f" % i + "K(%)"
         addheadline(headlinestr, workdirdata + "dealed-R.dat", workdirdata + "dealed-R-" + abc + ".dat")
-        savesinglefile(headlinestr, dataR, "R", abc,mrhead)
+        MRall = savesinglefile(headlinestr, dataR, "R", abc, mrhead)
         if halltest(file):
             plt.subplot(223)
         else:
             plt.subplot(212)
-        if abc == "1,1,1":
+        #图3显示电阻数据。
+        """if abc == "1,1,1":
             plot(headline, dataR, "R(ohm)")
         else:
-            plot(headline, dataR, "rho(ohm cm)")
+            plot(headline, dataR, "rho(ohm cm)")"""
+        # 图3显示MRall数据
+        plot(headline, MRall, "MR(%)")
     # hall处理
     if halltest(file) or type == "H":
         mrhead = ""
