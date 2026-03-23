@@ -12,6 +12,11 @@ L0=2.44*10**-8#热导洛伦兹数
 bohr = 5.2917721067 * 10 ** -11 #波尔长度
 Kb_ev_unit=ufloat(8.617343*10**-5,0.000015*10**-5)
 Kb_j_unit=1.380649*10**-23
+Kb_erg_unit=1.380649*10**-16 #玻尔滋曼常数 erg/K
+NA=6.02214076*10**23
+miuB=9.2740100783*10**-24 #玻尔磁子 J/K
+miuB_erg_unit=9.2740100783*10**-21 #玻尔磁子 erg/G
+
 #从beta计算德拜温度
 def debai_ca(beta,N):
     return (12*pi**4*N*R/5/beta)**(1/3)
@@ -39,3 +44,15 @@ def lamuda_e_ph(debai, Tc):
     print(debai)
     print(Tc)
     return lamuda
+
+def CWfit(solp,cut):
+    C=1/solp
+    xita=-cut/solp
+    print("cwfit")
+    print(C)
+    print(xita)
+    miueff=(3*Kb_erg_unit*C/(NA*(miuB_erg_unit)**2))**0.5
+    return miueff, xita
+cut=ufloat(-19.21776,0.058)#c-1(emu-1 mol Oe)
+solp=ufloat(0.73047,3.11718*10**-4)#c-1(emu-1 mol Oe)/K
+print(CWfit(solp,cut))
