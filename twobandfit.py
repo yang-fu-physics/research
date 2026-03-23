@@ -131,16 +131,15 @@ def main():
     print(f"Auto-estimated p0 (two electrons): n1_scale={p0[0]:.2f}, mu1={p0[1]:.3f}, "
           f"n2_scale={p0[2]:.2f}, mu2={p0[3]:.3f}")
     
-    # Search bounds for differential_evolution: both electrons
+    # Search bounds for differential_evolution: allow both electrons and holes
     # n_scale (in 1e20 m^-3): allow a broad range from data-estimated n
     n_abs = abs(n_scale_guess)
-    n_lo = max(n_abs * 0.001, 1.0)    # at least 1e20 m^-3
-    n_hi = n_abs * 1000
+    n_hi = max(n_abs * 1000, 1000.0) # safely large bound
     bounds_de = [
-        (-n_hi, -n_lo),   # n1_scale: electron (negative)
-        (1e-4,  1e3),     # mu1  [m^2/Vs]
-        (-n_hi, -n_lo),   # n2_scale: electron (negative)
-        (1e-4,  1e3),     # mu2  [m^2/Vs]
+        (-n_hi, n_hi),    # n1_scale: e (negative) or hole (positive)
+        (1e-5,  1e3),     # mu1  [m^2/Vs]
+        (-n_hi, n_hi),    # n2_scale: e (negative) or hole (positive)
+        (1e-5,  1e3)      # mu2
     ]
 
     def residual_de(params):
