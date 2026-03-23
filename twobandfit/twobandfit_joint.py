@@ -257,8 +257,8 @@ def main():
               f"(Type: {'Hole' if n2 > 0 else 'Electron'})")
         print(f"Mobility 2 (mu2): {mu2:.4e} \u00b1 {mu2_err:.4e} m^2/(V\u00b7s)")
         print(f"--- Fitted rho_xx(0): {rho_xx_0_fit_cm:.6e} ohm cm ---")
-        print(f"R\u00b2 (rho_xx): {r2_xx:.4f}")
-        print(f"R\u00b2 (rho_xy): {r2_xy:.4f}")
+        print(f"R^2 (rho_xx): {r2_xx:.4f}")
+        print(f"R^2 (rho_xy): {r2_xy:.4f}")
 
         # --- Plot ---
         B_smooth = np.linspace(B.min(), B.max(), 600)
