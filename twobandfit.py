@@ -196,17 +196,23 @@ def main():
                                    p0=p0_refined, bounds=bounds_cf, maxfev=200000)
         
         # Extract fitted parameters properly scaled
-        # mu is already constrained positive by bounds; two_band_rho_xy also uses np.abs internally
         n1 = popt[0] * 1e20
-        mu1 = popt[1]   # positive by bounds constraint
+        mu1 = popt[1]
         n2 = popt[2] * 1e20
-        mu2 = popt[3]   # positive by bounds constraint
+        mu2 = popt[3]
+
+        # Extract standard errors from covariance matrix
+        perr = np.sqrt(np.diag(pcov))
+        n1_err = perr[0] * 1e20
+        mu1_err = perr[1]
+        n2_err = perr[2] * 1e20
+        mu2_err = perr[3]
         
         print("\n=== Fit Results (SI Units) ===")
-        print(f"Carrier 1 (n1): {n1:.4e} m^-3 (Type: {'Hole' if n1 > 0 else 'Electron'})")
-        print(f"Mobility 1 (mu1): {mu1:.4e} m^2/(V·s)")
-        print(f"Carrier 2 (n2): {n2:.4e} m^-3 (Type: {'Hole' if n2 > 0 else 'Electron'})")
-        print(f"Mobility 2 (mu2): {mu2:.4e} m^2/(V·s)")
+        print(f"Carrier 1 (n1): {n1:.4e} ± {n1_err:.4e} m^-3 (Type: {'Hole' if n1 > 0 else 'Electron'})")
+        print(f"Mobility 1 (mu1): {mu1:.4e} ± {mu1_err:.4e} m^2/(V·s)")
+        print(f"Carrier 2 (n2): {n2:.4e} ± {n2_err:.4e} m^-3 (Type: {'Hole' if n2 > 0 else 'Electron'})")
+        print(f"Mobility 2 (mu2): {mu2:.4e} ± {mu2_err:.4e} m^2/(V·s)")
         
         if sigma_xx_0 is not None:
             sigma_xx_fit = e_charge * abs(n1) * mu1 + e_charge * abs(n2) * mu2
@@ -242,8 +248,8 @@ def main():
         
         # Add fit text to the plot
         fit_info = (
-            f"Carrier 1 ({'h' if n1 > 0 else 'e'}): $n_1$ = {n1:.2e} m$^{{-3}}$, $\\mu_1$ = {mu1:.4e} m$^2$/Vs\n"
-            f"Carrier 2 ({'h' if n2 > 0 else 'e'}): $n_2$ = {n2:.2e} m$^{{-3}}$, $\\mu_2$ = {mu2:.4e} m$^2$/Vs\n"
+            f"Carrier 1 ({'h' if n1 > 0 else 'e'}): $n_1$ = ({n1:.2e} $\\pm$ {n1_err:.2e}) m$^{{-3}}$, $\\mu_1$ = {mu1:.4e} $\\pm$ {mu1_err:.1e} m$^2$/Vs\n"
+            f"Carrier 2 ({'h' if n2 > 0 else 'e'}): $n_2$ = ({n2:.2e} $\\pm$ {n2_err:.2e}) m$^{{-3}}$, $\\mu_2$ = {mu2:.4e} $\\pm$ {mu2_err:.1e} m$^2$/Vs\n"
         )
         if sigma_xx_0 is not None:
             fit_info += f"Constrained $\\rho_{{xx}}(0)$: {rho_xx_fit_cm:.2e} $\\Omega\\cdot$cm\n"
