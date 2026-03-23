@@ -302,6 +302,14 @@ def main():
             print(f"\n=> Fit results and data exported to: {out_filename}")
         except Exception as e:
             print(f"\nWarning: Could not save output data to file. ({e})")
+            
+        # --- Save Plot to File ---
+        try:
+            out_plot_filename = base_name + '_fit_plot.png'
+            plt.savefig(out_plot_filename, dpi=300, bbox_inches='tight')
+            print(f"=> Fit plot saved to: {out_plot_filename}")
+        except Exception as e:
+            print(f"\nWarning: Could not save plot to file. ({e})")
         
         plt.show()
         
