@@ -188,12 +188,14 @@ def main():
             
             # Use high weight for the last point (constraint)
             sigma = np.ones(len(B_fit_data))
-            sigma[-1] = 1e-6
+            sigma[-1] = 1e-8
             popt, pcov = curve_fit(combined_model, B_fit_data, rho_fit_target,
-                                   p0=p0_refined, bounds=bounds_cf, sigma=sigma, maxfev=200000)
+                                   p0=p0_refined, bounds=bounds_cf, sigma=sigma, maxfev=200000,
+                                   ftol=1e-14, xtol=1e-14, gtol=1e-14)
         else:
             popt, pcov = curve_fit(model_to_fit, B_data, rho_xy_ohm_m,
-                                   p0=p0_refined, bounds=bounds_cf, maxfev=200000)
+                                   p0=p0_refined, bounds=bounds_cf, maxfev=200000,
+                                   ftol=1e-14, xtol=1e-14, gtol=1e-14)
         
         # Extract fitted parameters properly scaled
         n1 = popt[0] * 1e20
@@ -269,6 +271,38 @@ def main():
         plt.yticks(fontsize=12)
         
         plt.tight_layout()
+        
+        # --- Export Data to File ---
+        try:
+            # Construct output filename based on input
+            base_name = os.path.splitext(filepath)[0]
+            out_filename = base_name + '_fit_result.dat'
+            
+            with open(out_filename, 'w') as f:
+                f.write("# Two-Band Model Fit Results\n")
+                f.write(f"# Input file: {filepath}\n")
+                f.write(f"# R-squared: {r_squared:.6f}\n")
+                if sigma_xx_0 is not None:
+                    f.write(f"# Constrained rho_xx(0): {rho_xx_fit_cm:.6e} ohm cm\n")
+                f.write("# --- Parameters ---\n")
+                f.write(f"# n1 (m^-3) = {n1:.6e} +/- {n1_err:.6e} ({'Hole' if n1 > 0 else 'Electron'})\n")
+                f.write(f"# mu1 (m^2/Vs) = {mu1:.6e} +/- {mu1_err:.6e}\n")
+                f.write(f"# n2 (m^-3) = {n2:.6e} +/- {n2_err:.6e} ({'Hole' if n2 > 0 else 'Electron'})\n")
+                f.write(f"# mu2 (m^2/Vs) = {mu2:.6e} +/- {mu2_err:.6e}\n")
+                f.write("# ------------------\n")
+                f.write("# B(T)\trho_xy_raw(ohm_cm)\trho_xy_fit(ohm_cm)\n")
+                
+                # To align raw and fit data, we calculate the fit *at the raw B points*
+                rho_xy_fit_at_raw_m = model_to_fit(B_data, *popt)
+                rho_xy_fit_at_raw_cm = rho_xy_fit_at_raw_m * 100
+                
+                for i in range(len(B_data)):
+                    f.write(f"{B_data[i]:.6f}\t{rho_xy_ohm_cm[i]:.6e}\t{rho_xy_fit_at_raw_cm[i]:.6e}\n")
+            
+            print(f"\n=> Fit results and data exported to: {out_filename}")
+        except Exception as e:
+            print(f"\nWarning: Could not save output data to file. ({e})")
+        
         plt.show()
         
     except Exception as e:
