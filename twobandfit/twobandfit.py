@@ -10,7 +10,7 @@ The base program for fitting Hall resistivity (rho_xy vs B) to the two-band mode
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from scipy.optimize import curve_fit, differential_evolution
+from scipy.optimize import curve_fit, differential_evolution, minimize, approx_fprime
 from tkinter import Tk, filedialog
 import os
 
@@ -159,31 +159,40 @@ def main():
     )
     print(f"Global optimum found  (fun={de_res.fun:.3e})")
 
-    # Local Refinement (curve_fit)
-    print("Refining with curve_fit...")
-    bounds_cf = ([-np.inf, 1e-5, -np.inf, 1e-5], [np.inf, 1e3, np.inf, 1e3])
+    # Local Refinement (scipy.optimize.minimize with soft penalty)
+    print("Refining with L-BFGS-B minimiser...")
+    bounds_min = [(None, None), (1e-5, 1e3), (None, None), (1e-5, 1e3)]
 
-    if sigma_xx_0 is not None:
-        B_fit = np.append(B_data, 0.0)
-        y_fit = np.append(rho_data, 1.0 / sigma_xx_0)
+    def objective_local(params):
+        pred = model_rho_xy(B_data, *params)
+        chi2 = np.sum((pred - rho_data)**2)
+        if sigma_xx_0 is not None:
+            n1s, mu1, n2s, mu2 = params
+            s_pred = e_charge * abs(n1s * 1e20) * mu1 + e_charge * abs(n2s * 1e20) * mu2
+            w = 100 * np.sum((rho_data - rho_data.mean())**2) / sigma_xx_0**2
+            chi2 += w * (s_pred - sigma_xx_0)**2
+        return chi2
 
-        def combined_model(Ba, n1s, mu1, n2s, mu2):
-            rxy = model_rho_xy(Ba[:-1], n1s, mu1, n2s, mu2)
-            sxx = e_charge * abs(n1s * 1e20) * mu1 + e_charge * abs(n2s * 1e20) * mu2
-            return np.append(rxy, 1.0 / sxx)
+    opt_res = minimize(objective_local, x0=de_res.x, method='L-BFGS-B',
+                       bounds=bounds_min, options={'maxiter': 200000, 'ftol': 1e-15})
+    popt = opt_res.x
+    print(f"Local optimum found  (fun={opt_res.fun:.3e}, success={opt_res.success})")
 
-        sigma = np.ones(len(B_fit)); sigma[-1] = 1e-8
-        popt, pcov = curve_fit(
-            combined_model, B_fit, y_fit, p0=de_res.x, bounds=bounds_cf,
-            sigma=sigma, maxfev=200000, ftol=1e-14, xtol=1e-14, gtol=1e-14
-        )
-    else:
-        popt, pcov = curve_fit(
-            model_rho_xy, B_data, rho_data, p0=de_res.x, bounds=bounds_cf,
-            maxfev=200000, ftol=1e-14, xtol=1e-14, gtol=1e-14
-        )
-
-    perr = np.sqrt(np.diag(pcov))
+    # Estimate parameter covariance from numerical Hessian
+    eps = 1e-8
+    n_params = len(popt)
+    hessian = np.zeros((n_params, n_params))
+    for i in range(n_params):
+        def grad_i(x):
+            return approx_fprime(x, objective_local, eps * np.ones(n_params))[i]
+        hessian[i] = approx_fprime(popt, grad_i, eps * np.ones(n_params))
+    hessian = 0.5 * (hessian + hessian.T)  # ensure symmetry
+    try:
+        pcov = np.linalg.inv(hessian)
+        perr = np.sqrt(np.abs(np.diag(pcov)))
+    except np.linalg.LinAlgError:
+        print("Warning: Hessian is singular; parameter errors unavailable.")
+        perr = np.full(n_params, np.nan)
 
     # Parameter Extraction
     n1  = popt[0] * 1e20; mu1 = popt[1]
