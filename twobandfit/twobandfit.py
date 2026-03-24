@@ -122,8 +122,8 @@ def fit_two_band(B_data, rho_data, sigma_xx_0=None):
     hessian = np.zeros((n_params, n_params))
         
     for i in range(n_params):
-        def grad_i(x):
-            return approx_fprime(x, objective_local, eps * np.ones(n_params))[i]
+        def grad_i(x, _i=i):  # default arg binds current i (avoids closure late-binding bug)
+            return approx_fprime(x, objective_local, eps * np.ones(n_params))[_i]
         hessian[i] = approx_fprime(popt, grad_i, eps * np.ones(n_params))
     hessian = 0.5 * (hessian + hessian.T)  # ensure symmetry
     
