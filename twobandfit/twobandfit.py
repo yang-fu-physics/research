@@ -55,6 +55,92 @@ def load_dat(filepath, col_B=0, col_rho=1):
 
 # ===== Main Fitting Procedure =====
 
+def fit_two_band(B_data, rho_data, sigma_xx_0=None):
+    """
+    Core fitting logic extracted to be callable by batch scripts.
+    Returns: popt, perr, r2_xy, n1, n1_err, mu1, mu1_err, n2, n2_err, mu2, mu2_err
+    """
+    # Estimate p0
+    mask = (np.abs(B_data) > 0.3) & (np.abs(B_data) < 1.5)
+    if mask.sum() > 4:
+        slope = np.polyfit(B_data[mask], rho_data[mask], 1)[0]
+    else:
+        slope = (rho_data[-1] - rho_data[0]) / (B_data[-1] - B_data[0])
+
+    n_guess = 1.0 / (e_charge * abs(slope)) if slope != 0 else 1e26
+    n_sign  = -1.0 if slope < 0 else 1.0
+    n_scale = n_sign * n_guess / 1e20
+    n_abs   = abs(n_scale)
+    mu_guess = 0.5
+    
+    p0 = [n_sign * n_abs, mu_guess, n_sign * n_abs * 0.8, mu_guess * 0.3]
+
+    # Differential_evolution Global Search (Support Both Holes and Electrons)
+    n_hi = max(n_abs * 1000, 1000.0)
+    bounds_de = [(-n_hi, n_hi), (1e-5, 1e3), (-n_hi, n_hi), (1e-5, 1e3)]
+
+    def residual_de(params):
+        try:
+            n1s, mu1, n2s, mu2 = params
+            pred = model_rho_xy(B_data, *params)
+            err  = np.sum((pred - rho_data)**2)
+            
+            # Application of the rho_xx(0) soft constraint dynamically weighted by variance
+            if sigma_xx_0 is not None:
+                s_pred = e_charge * abs(n1s * 1e20) * mu1 + e_charge * abs(n2s * 1e20) * mu2
+                w = 100 * np.sum((rho_data - rho_data.mean())**2) / sigma_xx_0**2
+                err += w * (s_pred - sigma_xx_0)**2
+            return err
+        except Exception:
+            return 1e30
+
+    de_res = differential_evolution(
+        residual_de, bounds_de, seed=42, maxiter=2000, tol=1e-14,
+        mutation=(0.5, 1.5), recombination=0.9, popsize=15, workers=1
+    )
+
+    # Local Refinement (scipy.optimize.minimize with soft penalty)
+    bounds_min = [(None, None), (1e-5, 1e3), (None, None), (1e-5, 1e3)]
+
+    def objective_local(params):
+        pred = model_rho_xy(B_data, *params)
+        chi2 = np.sum((pred - rho_data)**2)
+        if sigma_xx_0 is not None:
+            n1s, mu1, n2s, mu2 = params
+            s_pred = e_charge * abs(n1s * 1e20) * mu1 + e_charge * abs(n2s * 1e20) * mu2
+            w = 100 * np.sum((rho_data - rho_data.mean())**2) / sigma_xx_0**2
+            chi2 += w * (s_pred - sigma_xx_0)**2
+        return chi2
+
+    opt_res = minimize(objective_local, x0=de_res.x, method='L-BFGS-B',
+                       bounds=bounds_min, options={'maxiter': 200000, 'ftol': 1e-15})
+    popt = opt_res.x
+
+    # Estimate parameter covariance from numerical Hessian
+    eps = 1e-8
+    n_params = len(popt)
+    hessian = np.zeros((n_params, n_params))
+        
+    for i in range(n_params):
+        def grad_i(x):
+            return approx_fprime(x, objective_local, eps * np.ones(n_params))[i]
+        hessian[i] = approx_fprime(popt, grad_i, eps * np.ones(n_params))
+    hessian = 0.5 * (hessian + hessian.T)  # ensure symmetry
+    
+    # Scale residual variance like curve_fit does (reduced chi-squared)
+    res_var = np.sum((model_rho_xy(B_data, *popt) - rho_data)**2) / (len(B_data) - n_params)
+    
+    try:
+        pcov = np.linalg.inv(hessian) * res_var * 2.0  # *2.0 because Hessian is 2nd derivative of sum of squares
+        perr = np.sqrt(np.abs(np.diag(pcov)))
+    except np.linalg.LinAlgError:
+        perr = np.full(n_params, np.nan)
+
+    res_xy = rho_data - model_rho_xy(B_data, *popt)
+    r2_xy  = 1 - np.sum(res_xy**2) / np.sum((rho_data - rho_data.mean())**2)
+
+    return popt, perr, r2_xy
+
 def main():
     root = Tk(); root.withdraw()
 
@@ -117,82 +203,8 @@ def main():
     B_data   = B_xy
     rho_data = rho_xy_m
 
-    # Estimate p0
-    mask = (np.abs(B_data) > 0.3) & (np.abs(B_data) < 1.5)
-    if mask.sum() > 4:
-        slope = np.polyfit(B_data[mask], rho_data[mask], 1)[0]
-    else:
-        slope = (rho_data[-1] - rho_data[0]) / (B_data[-1] - B_data[0])
-
-    n_guess = 1.0 / (e_charge * abs(slope)) if slope != 0 else 1e26
-    n_sign  = -1.0 if slope < 0 else 1.0
-    n_scale = n_sign * n_guess / 1e20
-    n_abs   = abs(n_scale)
-    mu_guess = 0.5
-    
-    p0 = [n_sign * n_abs, mu_guess, n_sign * n_abs * 0.8, mu_guess * 0.3]
-    print(f"\nAuto p0: n1_scale={p0[0]:.2e}, mu1={p0[1]:.3f}, n2_scale={p0[2]:.2e}, mu2={p0[3]:.3f}")
-
-    # Differential_evolution Global Search (Support Both Holes and Electrons)
-    n_hi = max(n_abs * 1000, 1000.0)
-    bounds_de = [(-n_hi, n_hi), (1e-5, 1e3), (-n_hi, n_hi), (1e-5, 1e3)]
-
-    def residual_de(params):
-        try:
-            n1s, mu1, n2s, mu2 = params
-            pred = model_rho_xy(B_data, *params)
-            err  = np.sum((pred - rho_data)**2)
-            
-            # Application of the rho_xx(0) soft constraint dynamically weighted by variance
-            if sigma_xx_0 is not None:
-                s_pred = e_charge * abs(n1s * 1e20) * mu1 + e_charge * abs(n2s * 1e20) * mu2
-                w = 100 * np.sum((rho_data - rho_data.mean())**2) / sigma_xx_0**2
-                err += w * (s_pred - sigma_xx_0)**2
-            return err
-        except Exception:
-            return 1e30
-
     print("\nRunning global optimisation (differential_evolution)...")
-    de_res = differential_evolution(
-        residual_de, bounds_de, seed=42, maxiter=2000, tol=1e-14,
-        mutation=(0.5, 1.5), recombination=0.9, popsize=15, workers=1
-    )
-    print(f"Global optimum found  (fun={de_res.fun:.3e})")
-
-    # Local Refinement (scipy.optimize.minimize with soft penalty)
-    print("Refining with L-BFGS-B minimiser...")
-    bounds_min = [(None, None), (1e-5, 1e3), (None, None), (1e-5, 1e3)]
-
-    def objective_local(params):
-        pred = model_rho_xy(B_data, *params)
-        chi2 = np.sum((pred - rho_data)**2)
-        if sigma_xx_0 is not None:
-            n1s, mu1, n2s, mu2 = params
-            s_pred = e_charge * abs(n1s * 1e20) * mu1 + e_charge * abs(n2s * 1e20) * mu2
-            w = 100 * np.sum((rho_data - rho_data.mean())**2) / sigma_xx_0**2
-            chi2 += w * (s_pred - sigma_xx_0)**2
-        return chi2
-
-    opt_res = minimize(objective_local, x0=de_res.x, method='L-BFGS-B',
-                       bounds=bounds_min, options={'maxiter': 200000, 'ftol': 1e-15})
-    popt = opt_res.x
-    print(f"Local optimum found  (fun={opt_res.fun:.3e}, success={opt_res.success})")
-
-    # Estimate parameter covariance from numerical Hessian
-    eps = 1e-8
-    n_params = len(popt)
-    hessian = np.zeros((n_params, n_params))
-    for i in range(n_params):
-        def grad_i(x):
-            return approx_fprime(x, objective_local, eps * np.ones(n_params))[i]
-        hessian[i] = approx_fprime(popt, grad_i, eps * np.ones(n_params))
-    hessian = 0.5 * (hessian + hessian.T)  # ensure symmetry
-    try:
-        pcov = np.linalg.inv(hessian)
-        perr = np.sqrt(np.abs(np.diag(pcov)))
-    except np.linalg.LinAlgError:
-        print("Warning: Hessian is singular; parameter errors unavailable.")
-        perr = np.full(n_params, np.nan)
+    popt, perr, r2_xy = fit_two_band(B_data, rho_data, sigma_xx_0)
 
     # Parameter Extraction
     n1  = popt[0] * 1e20; mu1 = popt[1]
@@ -202,9 +214,6 @@ def main():
 
     sxx0 = e_charge * abs(n1) * mu1 + e_charge * abs(n2) * mu2
     rho_xx_0_fit_cm = 1.0 / sxx0 * 100
-
-    res_xy = rho_data - model_rho_xy(B_data, *popt)
-    r2_xy  = 1 - np.sum(res_xy**2) / np.sum((rho_data - rho_data.mean())**2)
 
     print("\n=== Fit Results (SI Units) ===")
     print(f"Carrier 1 (n1): {n1:.4e} \u00b1 {n1_err:.4e} m^-3 ({'Hole' if n1 > 0 else 'Electron'})")
